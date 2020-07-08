@@ -2,7 +2,7 @@
 #define SEMANT_H_
 
 #include <assert.h>
-#include <iostream>  
+#include <iostream>
 #include "cool-tree.h"
 #include "stringtab.h"
 #include "symtab.h"
@@ -24,6 +24,7 @@ private:
   int semant_errors;
   void install_basic_classes();
   ostream& error_stream;
+  SymbolTable<Symbol, Class__class> *tbl;
 
 public:
   ClassTable(Classes);
