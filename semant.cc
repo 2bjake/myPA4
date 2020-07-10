@@ -3,9 +3,9 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <stdarg.h>
+#include <set>
 #include "semant.h"
 #include "utilities.h"
-
 
 extern int semant_debug;
 extern char *curr_filename;
@@ -92,31 +92,82 @@ ClassTable::ClassTable(Classes classes) : semant_errors(0) , error_stream(cerr) 
 
         // check for redefinition of built-in classes
         if (c->name == Object || c->name == Int  || c->name == Bool || c->name == Str || c->name == IO) {
-            semant_error(c) << "Class " << c->name << " is a built-in class and cannot be redefined." << std::endl;
-            exit(-1);
+            semant_error(c) << "Class " << c->name << " is a built-in class and cannot be redefined" << std::endl;
+            continue;
         }
 
         // check for improper use of SELF_TYPE
         if (c->name == SELF_TYPE) {
-            semant_error(c) << "SELF_TYPE cannot be used as a class name." << std::endl;
-            exit(-1);
+            semant_error(c) << "SELF_TYPE cannot be used as a class name" << std::endl;
+            continue;
+        }
+
+        // check for self inheritance
+        if (c->parent == c->name || c->parent == SELF_TYPE) {
+            semant_error(c) << "Class " << c->name << " cannot inherit from itself" << std::endl;
+            continue;
+        }
+
+        // check for inheritance of invalid built-in classes
+        if (c->parent == Int  || c->parent == Bool || c->parent == Str) {
+            semant_error(c) << "Class " << c->name << " cannot inherit from " << c->parent << std::endl;
+            continue;
         }
 
         // check for redefinition of user classes
         if (tbl->lookup(c->name) != NULL) {
-            semant_error(c) << "Class " << c->name << " already defined." << std::endl;
+            semant_error(c) << "Class " << c->name << " already defined" << std::endl;
+            continue;
         }
 
+        // didn't continue (no errors) add to symbol table
         tbl->addid(c->name, c);
     }
 
     // check that Main class is defined
     if (tbl->lookup(Main) == NULL) {
-        semant_error() << "Required class 'Main' not defined." << std::endl;
-        exit(-1);
+        semant_error() << "Required class 'Main' not defined" << std::endl;
     }
 
     install_basic_classes();
+
+    // check inheritance
+    for(int i = classes->first(); classes->more(i); i = classes->next(i)) {
+        // TODO: this isn't filtering out dupes
+        // TODO: this doesn't include built-in classes
+        class__class* ci = dynamic_cast<class__class*>(classes->nth(i));
+        class__class* c = dynamic_cast<class__class*>(tbl->lookup(ci->name));
+        if (c == NULL) {
+            continue; // only process classes that made it into the symbol table
+        }
+
+        if (c->parent != No_class && tbl->lookup(c->parent) == NULL) {
+            semant_error(c) << "Class " << c->name << " cannot inherit from " << c->parent << " because " << c->parent << " is not defined" << std::endl;
+        }
+
+        // check for inheritance cycles
+        class__class* cur = dynamic_cast<class__class*>(tbl->lookup(c->parent));
+        while (cur != NULL) {
+            if (cur->name == c->name) {
+                semant_error(c) << "Class " << c->name << " has an inheritance cycle" << std::endl;
+                break;
+            }
+            cur = dynamic_cast<class__class*>(tbl->lookup(cur->parent));
+        }
+
+        // inheritance checks out, add c to parent's children
+        class__class* parent = classForSymbol(c->parent);
+        if (parent != NULL) {
+            parent->children.insert(c->name);
+        }
+    }
+
+    // print class hierarchy (for fun)
+    // class__class* obj = classForSymbol(Object);
+    // std::cout << std::endl;
+    // for (std::set<Symbol>::iterator i = obj->children.begin(); i != obj->children.end(); i++ ) {
+    //     std::cout << *i << std::endl;
+    // }
 }
 
 void ClassTable::install_basic_classes() {
@@ -153,6 +204,7 @@ void ClassTable::install_basic_classes() {
 			       single_Features(method(copy, nil_Formals(), SELF_TYPE, no_expr()))),
 	       filename);
 
+    tbl->addid(Object, Object_class);
 
     //
     // The IO class inherits from Object. Its methods are
@@ -175,6 +227,8 @@ void ClassTable::install_basic_classes() {
 			       single_Features(method(in_int, nil_Formals(), Int, no_expr()))),
 	       filename);
 
+    tbl->addid(IO, IO_class);
+
     //
     // The Int class has no methods and only a single attribute, the
     // "val" for the integer.
@@ -185,12 +239,15 @@ void ClassTable::install_basic_classes() {
 	       single_Features(attr(val, prim_slot, no_expr())),
 	       filename);
 
+    tbl->addid(Int, Int_class);
+
     //
     // Bool also has only the "val" slot.
     //
     Class_ Bool_class =
 	class_(Bool, Object, single_Features(attr(val, prim_slot, no_expr())),filename);
 
+    tbl->addid(Bool, Bool_class);
     //
     // The class Str has a number of slots and operations:
     //       val                                  the length of the string
@@ -219,6 +276,8 @@ void ClassTable::install_basic_classes() {
 						      Str,
 						      no_expr()))),
 	       filename);
+
+    tbl->addid(Str, Str_class);
 }
 
 ////////////////////////////////////////////////////////////////////
@@ -253,7 +312,25 @@ ostream& ClassTable::semant_error()
     return error_stream;
 }
 
-
+void program_class::processClass(Symbol curSym, ClassTable* classtable) {
+    class__class* cur = classtable->classForSymbol(curSym);
+    attrTbl->enterscope();
+    methodTbl->enterscope();
+    for(int i = cur->features->first(); cur->features->more(i); i = cur->features->next(i)) {
+        Feature f = cur->features->nth(i);
+        if (attr_class* attr = dynamic_cast<attr_class*>(f)) {
+            std::cout << std::endl << "attr: " << attr->name << std::endl;
+        } else if(method_class* method = dynamic_cast<method_class*>(f)) {
+            std::cout << std::endl << "method: " << method->name << std::endl;
+        }
+    }
+    for(std::set<Symbol>::iterator i = cur->children.begin(); i != cur->children.end(); i++ ) {
+        std::cout << "parent: " << curSym << " child: " << *i << std::endl;
+        processClass(*i, classtable);
+    }
+    attrTbl->exitscope();
+    methodTbl->exitscope();
+}
 
 /*   This is the entry point to the semantic checker.
 
@@ -275,12 +352,12 @@ void program_class::semant()
     /* ClassTable constructor may do some semantic analysis */
     ClassTable *classtable = new ClassTable(classes);
 
-    /* some semantic analysis code may go here */
-
     if (classtable->errors()) {
-	cerr << "Compilation halted due to static semantic errors." << endl;
-	exit(1);
+	    cerr << "Compilation halted due to static semantic errors." << endl;
+	    exit(1);
     }
+
+    processClass(Object, classtable);
 }
 
 

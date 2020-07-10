@@ -28,6 +28,9 @@ private:
 
 public:
   ClassTable(Classes);
+  class__class* classForSymbol(Symbol symbol) {
+    return dynamic_cast<class__class*>(tbl->lookup(symbol));
+  }
   int errors() { return semant_errors; }
   ostream& semant_error();
   ostream& semant_error(Class_ c);

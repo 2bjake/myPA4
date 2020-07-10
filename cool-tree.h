@@ -11,6 +11,8 @@
 
 #include "tree.h"
 #include "cool-tree.handcode.h"
+#include "symtab.h"
+#include <set>
 
 
 // define the class for phylum
@@ -124,14 +126,25 @@ typedef list_node<Case> Cases_class;
 typedef Cases_class *Cases;
 
 
+class attr_class;
+class method_class;
+class class__class;
+class ClassTable;
 // define the class for constructors
 // define constructor - program
 class program_class : public Program_class {
 protected:
    Classes classes;
+   SymbolTable<Symbol, attr_class> *attrTbl;
+   SymbolTable<Symbol, method_class> *methodTbl;
+
+   void processClass(Symbol curSym, ClassTable* classtable);
+
 public:
    program_class(Classes a1) {
       classes = a1;
+      attrTbl = new SymbolTable<Symbol, attr_class>();
+      methodTbl = new SymbolTable<Symbol, method_class>();
    }
    Program copy_Program();
    void dump(ostream& stream, int n);
@@ -152,6 +165,7 @@ public:
    Symbol parent;
    Features features;
    Symbol filename;
+   std::set<Symbol> children;
 
    class__class(Symbol a1, Symbol a2, Features a3, Symbol a4) {
       name = a1;
@@ -173,12 +187,12 @@ public:
 
 // define constructor - method
 class method_class : public Feature_class {
-protected:
+public:
    Symbol name;
    Formals formals;
    Symbol return_type;
    Expression expr;
-public:
+
    method_class(Symbol a1, Formals a2, Symbol a3, Expression a4) {
       name = a1;
       formals = a2;
@@ -199,11 +213,11 @@ public:
 
 // define constructor - attr
 class attr_class : public Feature_class {
-protected:
+public:
    Symbol name;
    Symbol type_decl;
    Expression init;
-public:
+
    attr_class(Symbol a1, Symbol a2, Expression a3) {
       name = a1;
       type_decl = a2;
