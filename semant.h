@@ -3,6 +3,7 @@
 
 #include <assert.h>
 #include <iostream>
+#include <set>
 #include "cool-tree.h"
 #include "stringtab.h"
 #include "symtab.h"
@@ -24,7 +25,10 @@ private:
   int semant_errors;
   void install_basic_classes();
   ostream& error_stream;
+  std::set<Symbol> classSymbols;
   SymbolTable<Symbol, Class__class> *tbl;
+
+  void addClass(Symbol name, Class_ c);
 
 public:
   ClassTable(Classes);

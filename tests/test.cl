@@ -17,4 +17,26 @@ class Object {};
 class Main inherits IO {
     f(): Foo { 1 };
     main(): Int { 5 };
+    val: Foo;
+    self: Int;
+};
+
+class A {
+    foot: Int;
+    fun(): Int { 2 };
+    merp(a: Int, b: Int): Int { 2 };
+    chap(a: ASDF): Int { 2 };
+};
+
+class B inherits A {
+    foot: Int;
+    fun(): Bool { 2 };
+    merp(a: Int, b: Bool): Int { 2 };
+    erp(a: Int, a: Bool): Int { 2 };
+};
+
+class C {
+    g(self: Int): Int { 2 };
+    f(): SELF_TYPE { 5 };
+    self(): SELF_TYPE { 4 };
 };

@@ -65,6 +65,8 @@ class Formal_class : public tree_node {
 public:
    tree_node *copy()		 { return copy_Formal(); }
    virtual Formal copy_Formal() = 0;
+   virtual Symbol getType() = 0;
+   virtual Symbol getName() = 0;
 
 #ifdef Formal_EXTRAS
    Formal_EXTRAS
@@ -138,6 +140,8 @@ protected:
    SymbolTable<Symbol, attr_class> *attrTbl;
    SymbolTable<Symbol, method_class> *methodTbl;
 
+   bool processAttr(attr_class* attr, class__class* c, ClassTable* classtable);
+   bool processMethod(method_class* method, class__class* c, ClassTable* classtable);
    void processClass(Symbol curSym, ClassTable* classtable);
 
 public:
@@ -247,6 +251,8 @@ public:
    }
    Formal copy_Formal();
    void dump(ostream& stream, int n);
+   Symbol getName() { return name; }
+   Symbol getType() { return type_decl; }
 
 #ifdef Formal_SHARED_EXTRAS
    Formal_SHARED_EXTRAS
