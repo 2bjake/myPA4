@@ -81,9 +81,9 @@ static void initialize_constants(void)
     val         = idtable.add_string("_val");
 }
 
-void ClassTable::addClass(Symbol name, Class_ c) {
-    classSymbols.insert(name);
-    tbl->addid(name, c);
+void ClassTable::add_class(Class_ c) {
+    classSymbols.insert(c->get_name());
+    tbl->addid(c->get_name(), c);
 }
 
 ClassTable::ClassTable(Classes classes) : semant_errors(0) , error_stream(cerr) {
@@ -93,40 +93,43 @@ ClassTable::ClassTable(Classes classes) : semant_errors(0) , error_stream(cerr) 
 
     // add user defined classes to symbol table
     for(int i = classes->first(); classes->more(i); i = classes->next(i)) {
-        class__class* c = dynamic_cast<class__class*>(classes->nth(i));
+        Class_ c = classes->nth(i);
 
         // check for redefinition of built-in classes
-        if (c->name == Object || c->name == Int  || c->name == Bool || c->name == Str || c->name == IO) {
-            semant_error(c) << "Class " << c->name << " is a built-in class and cannot be redefined" << std::endl;
+        Symbol name = c->get_name();
+        if (name == Object || name == Int  || name == Bool || name == Str || name == IO) {
+            semant_error(c) << "Class " << name << " is a built-in class and cannot be redefined" << std::endl;
             continue;
         }
 
         // check for improper use of SELF_TYPE
-        if (c->name == SELF_TYPE) {
+        if (name == SELF_TYPE) {
             semant_error(c) << "SELF_TYPE cannot be used as a class name" << std::endl;
             continue;
         }
 
+        Symbol parent_sym = c->get_parent();
+
         // check for self inheritance
-        if (c->parent == c->name || c->parent == SELF_TYPE) {
-            semant_error(c) << "Class " << c->name << " cannot inherit from itself" << std::endl;
+        if (parent_sym == name || parent_sym == SELF_TYPE) {
+            semant_error(c) << "Class " << name << " cannot inherit from itself" << std::endl;
             continue;
         }
 
         // check for inheritance of invalid built-in classes
-        if (c->parent == Int  || c->parent == Bool || c->parent == Str) {
-            semant_error(c) << "Class " << c->name << " cannot inherit from " << c->parent << std::endl;
+        if (parent_sym == Int  || parent_sym == Bool || parent_sym == Str) {
+            semant_error(c) << "Class " << name << " cannot inherit from " << parent_sym << std::endl;
             continue;
         }
 
         // check for redefinition of user classes
-        if (tbl->lookup(c->name) != NULL) {
-            semant_error(c) << "Class " << c->name << " already defined" << std::endl;
+        if (tbl->lookup(name) != NULL) {
+            semant_error(c) << "Class " << name << " already defined" << std::endl;
             continue;
         }
 
         // didn't continue (no errors) add to symbol table
-        addClass(c->name, c);
+        add_class(c);
     }
 
     // check that Main class is defined
@@ -138,29 +141,29 @@ ClassTable::ClassTable(Classes classes) : semant_errors(0) , error_stream(cerr) 
 
     // check inheritance
     for(std::set<Symbol>::iterator i = classSymbols.begin(); i != classSymbols.end(); i++) {
-        class__class* c = dynamic_cast<class__class*>(tbl->lookup(*i));
+        Class_ c = tbl->lookup(*i);
         if (c == NULL) {
             continue; // only process classes that made it into the symbol table
         }
 
-        if (c->parent != No_class && tbl->lookup(c->parent) == NULL) {
-            semant_error(c) << "Class " << c->name << " cannot inherit from " << c->parent << " because " << c->parent << " is not defined" << std::endl;
+        if (c->get_parent() != No_class && tbl->lookup(c->get_parent()) == NULL) {
+            semant_error(c) << "Class " << c->get_name() << " cannot inherit from " << c->get_parent() << " because " << c->get_parent() << " is not defined" << std::endl;
         }
 
         // check for inheritance cycles
-        class__class* cur = dynamic_cast<class__class*>(tbl->lookup(c->parent));
+        Class_ cur = tbl->lookup(c->get_parent());
         while (cur != NULL) {
-            if (cur->name == c->name) {
-                semant_error(c) << "Class " << c->name << " has an inheritance cycle" << std::endl;
+            if (cur->get_name() == c->get_name()) {
+                semant_error(c) << "Class " << c->get_name() << " has an inheritance cycle" << std::endl;
                 break;
             }
-            cur = dynamic_cast<class__class*>(tbl->lookup(cur->parent));
+            cur = tbl->lookup(cur->get_parent());
         }
 
         // inheritance checks out, add c to parent's children
-        class__class* parent = classForSymbol(c->parent);
+        Class_ parent = class_for_symbol(c->get_parent());
         if (parent != NULL) {
-            parent->children.insert(c->name);
+            parent->add_child(c->get_name());
         }
     }
 
@@ -206,7 +209,7 @@ void ClassTable::install_basic_classes() {
 			       single_Features(method(copy, nil_Formals(), SELF_TYPE, no_expr()))),
 	       filename);
 
-    addClass(Object, Object_class);
+    add_class(Object_class);
 
     //
     // The IO class inherits from Object. Its methods are
@@ -229,7 +232,7 @@ void ClassTable::install_basic_classes() {
 			       single_Features(method(in_int, nil_Formals(), Int, no_expr()))),
 	       filename);
 
-    addClass(IO, IO_class);
+    add_class(IO_class);
 
     //
     // The Int class has no methods and only a single attribute, the
@@ -241,7 +244,7 @@ void ClassTable::install_basic_classes() {
 	       single_Features(attr(val, prim_slot, no_expr())),
 	       filename);
 
-    addClass(Int, Int_class);
+    add_class(Int_class);
 
     //
     // Bool also has only the "val" slot.
@@ -249,7 +252,7 @@ void ClassTable::install_basic_classes() {
     Class_ Bool_class =
 	class_(Bool, Object, single_Features(attr(val, prim_slot, no_expr())),filename);
 
-    addClass(Bool, Bool_class);
+    add_class(Bool_class);
     //
     // The class Str has a number of slots and operations:
     //       val                                  the length of the string
@@ -279,7 +282,7 @@ void ClassTable::install_basic_classes() {
 						      no_expr()))),
 	       filename);
 
-    addClass(Str, Str_class);
+    add_class(Str_class);
 }
 
 ////////////////////////////////////////////////////////////////////
@@ -314,106 +317,109 @@ ostream& ClassTable::semant_error()
     return error_stream;
 }
 
-bool program_class::processAttr(attr_class* attr, class__class* c, ClassTable* classtable) {
+bool program_class::process_attr(attr_class* attr, Class_ c, ClassTable* classtable) {
     // check that the type is in classSymbols (or is SELF_TYPE)
-    if (classtable->classForSymbol(attr->type_decl) == NULL && attr->type_decl != SELF_TYPE) {
-        classtable->semant_error(c->get_filename(), attr) << "Attribute " << attr->name << " type " << attr->type_decl << " is undefined" << std::endl;
+    if (classtable->class_for_symbol(attr->get_type_decl()) == NULL && attr->get_type_decl() != SELF_TYPE) {
+        classtable->semant_error(c->get_filename(), attr) << "Attribute " << attr->get_name() << " type " << attr->get_type_decl() << " is undefined" << std::endl;
         return false;
     }
 
     // check that the id is not self
-    if (attr->name == self) {
+    if (attr->get_name() == self) {
         classtable->semant_error(c->get_filename(), attr) << "self cannot be used as an attribute name" << std::endl;
         return false;
     }
 
     // check that the id is not already in the attrTable
-    if (attrTbl->lookup(attr->name) != NULL) {
-        classtable->semant_error(c->get_filename(), attr) << attr->name << " cannot be redefined" << std::endl;
+    if (attrTbl->lookup(attr->get_name()) != NULL) {
+        classtable->semant_error(c->get_filename(), attr) << attr->get_name() << " cannot be redefined" << std::endl;
     }
 
-    attrTbl->addid(attr->name, attr);
+    attrTbl->addid(attr->get_name(), attr);
     return true;
 }
 
-bool program_class::processMethod(method_class* method, class__class* c, ClassTable* classtable) {
+bool program_class::process_method(method_class* method, Class_ c, ClassTable* classtable) {
     // check that the return type is in classSymbols (or is SELF_TYPE)
-    if (classtable->classForSymbol(method->return_type) == NULL && method->return_type != SELF_TYPE) {
-        classtable->semant_error(c->get_filename(), method) << "Method " << method->name << " return type " << method->return_type << " is undefined" << std::endl;
+    if (classtable->class_for_symbol(method->get_return_type()) == NULL && method->get_return_type() != SELF_TYPE) {
+        classtable->semant_error(c->get_filename(), method) << "Method " << method->get_name() << " return type " << method->get_return_type() << " is undefined" << std::endl;
         return false;
     }
 
     // check that id is not self
-    if (method->name == self) {
+    if (method->get_name() == self) {
         classtable->semant_error(c->get_filename(), method) << "self cannot be used as a method name" << std::endl;
         return false;
     }
 
     // formals checks
     std::set<Symbol> formalNames;
-    for(int i = method->formals->first(); method->formals->more(i); i = method->formals->next(i)) {
-        Formal f = method->formals->nth(i);
+    Formals formals = method->get_formals();
+    for(int i = formals->first(); formals->more(i); i = formals->next(i)) {
+        Formal f = formals->nth(i);
         // check that types are in classSymbols (SELF_TYPE not allowed)
-        if (classtable->classForSymbol(f->getType()) == NULL) {
-            classtable->semant_error(c->get_filename(), method) << "Method " << method->name << " parameter " << f->getName() << " has undefined type " << f->getType() << std::endl;
+        if (classtable->class_for_symbol(f->get_type()) == NULL) {
+            classtable->semant_error(c->get_filename(), method) << "Method " << method->get_name() << " parameter " << f->get_name() << " has undefined type " << f->get_type() << std::endl;
             return false;
         }
 
         // check that id is not self
-        if (f->getName() == self) {
-            classtable->semant_error(c->get_filename(), method) << "Cannot use self as parameter name in method " << method->name << std::endl;
+        if (f->get_name() == self) {
+            classtable->semant_error(c->get_filename(), method) << "Cannot use self as parameter name in method " << method->get_name() << std::endl;
             return false;
         }
 
         // check that the same id isn't used multiple times
-        std::pair<std::set<Symbol>::iterator, bool> result = formalNames.insert(f->getName());
+        std::pair<std::set<Symbol>::iterator, bool> result = formalNames.insert(f->get_name());
         if (!result.second) {
-            classtable->semant_error(c->get_filename(), method) << "Cannot use the same paramater name " << f->getName() << " more than once in method " << method->name << std::endl;
+            classtable->semant_error(c->get_filename(), method) << "Cannot use the same paramater name " << f->get_name() << " more than once in method " << method->get_name() << std::endl;
             return false;
         }
     }
 
     // check that if id is already in methodTable, that the type matches exactly (including SELF_TYPE return)
-    if (method_class* superMethod = methodTbl->lookup(method->name)) {
-        if (method->return_type != superMethod->return_type) {
-            classtable->semant_error(c->get_filename(), method) << "In redefined method " << method->name << ", return type " << method->return_type << " is different from original type " << superMethod->return_type << std::endl;
+    if (method_class* superMethod = methodTbl->lookup(method->get_name())) {
+        if (method->get_return_type() != superMethod->get_return_type()) {
+            classtable->semant_error(c->get_filename(), method) << "In redefined method " << method->get_name() << ", return type " << method->get_return_type() << " is different from original type " << superMethod->get_return_type() << std::endl;
             return false;
         }
 
-        if (method->formals->len() != superMethod->formals->len()) {
-            classtable->semant_error(c->get_filename(), method) << "In redefined method " << method->name << ", the wrong number of parameters are specified" << std::endl;
+        if (method->get_formals()->len() != superMethod->get_formals()->len()) {
+            classtable->semant_error(c->get_filename(), method) << "In redefined method " << method->get_name() << ", the wrong number of parameters are specified" << std::endl;
             return false;
         }
 
-        for(int i = method->formals->first(); method->formals->more(i); i = method->formals->next(i)) {
-            Symbol type = method->formals->nth(i)->getType();
-            Symbol superType = superMethod->formals->nth(i)->getType();
+        for(int i = formals->first(); formals->more(i); i = formals->next(i)) {
+            Symbol type = formals->nth(i)->get_type();
+            Symbol superType = superMethod->get_formals()->nth(i)->get_type();
             if (type != superType) {
-                classtable->semant_error(c->get_filename(), method) << "In redefined method " << method->name << ", parameter type " << type << " does not match original parameter type " << superType << std::endl;
+                classtable->semant_error(c->get_filename(), method) << "In redefined method " << method->get_name() << ", parameter type " << type << " does not match original parameter type " << superType << std::endl;
                 return false;
             }
         }
     }
 
-    methodTbl->addid(method->name, method);
+    methodTbl->addid(method->get_name(), method);
     return true;
 }
 
-void program_class::processClass(Symbol curSym, ClassTable* classtable) {
-    class__class* cur = classtable->classForSymbol(curSym);
+void program_class::process_class(Symbol curSym, ClassTable* classtable) {
+    Class_ cur = classtable->class_for_symbol(curSym);
     attrTbl->enterscope();
     methodTbl->enterscope();
-    for(int i = cur->features->first(); cur->features->more(i); i = cur->features->next(i)) {
-        Feature f = cur->features->nth(i);
+    Features features = cur->get_features();
+    for(int i = features->first(); features->more(i); i = features->next(i)) {
+        Feature f = features->nth(i);
         if (attr_class* attr = dynamic_cast<attr_class*>(f)) {
-            processAttr(attr, cur, classtable);
+            process_attr(attr, cur, classtable);
         } else if(method_class* method = dynamic_cast<method_class*>(f)) {
-            processMethod(method, cur, classtable);
+            process_method(method, cur, classtable);
         }
     }
-    for(std::set<Symbol>::iterator i = cur->children.begin(); i != cur->children.end(); i++ ) {
+    std::set<Symbol> children = cur->get_children();
+    for(std::set<Symbol>::iterator i = children.begin(); i != children.end(); i++ ) {
         if (*i != Bool && *i != Int && *i != Str) {
-            processClass(*i, classtable);
+            process_class(*i, classtable);
         }
     }
     attrTbl->exitscope();
@@ -445,7 +451,7 @@ void program_class::semant()
 	    exit(1);
     }
 
-    processClass(Object, classtable);
+    process_class(Object, classtable);
 
         if (classtable->errors()) {
 	    cerr << "Compilation halted due to static semantic errors." << endl;

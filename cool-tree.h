@@ -37,6 +37,11 @@ class Class__class : public tree_node {
 public:
    tree_node *copy()		 { return copy_Class_(); }
    virtual Class_ copy_Class_() = 0;
+   virtual Symbol get_name() = 0;
+   virtual Symbol get_parent() = 0;
+   virtual Features get_features() = 0;
+   virtual std::set<Symbol> get_children() = 0;
+   virtual void add_child(Symbol child) = 0;
 
 #ifdef Class__EXTRAS
    Class__EXTRAS
@@ -65,8 +70,8 @@ class Formal_class : public tree_node {
 public:
    tree_node *copy()		 { return copy_Formal(); }
    virtual Formal copy_Formal() = 0;
-   virtual Symbol getType() = 0;
-   virtual Symbol getName() = 0;
+   virtual Symbol get_type() = 0;
+   virtual Symbol get_name() = 0;
 
 #ifdef Formal_EXTRAS
    Formal_EXTRAS
@@ -140,9 +145,9 @@ protected:
    SymbolTable<Symbol, attr_class> *attrTbl;
    SymbolTable<Symbol, method_class> *methodTbl;
 
-   bool processAttr(attr_class* attr, class__class* c, ClassTable* classtable);
-   bool processMethod(method_class* method, class__class* c, ClassTable* classtable);
-   void processClass(Symbol curSym, ClassTable* classtable);
+   bool process_attr(attr_class* attr, Class_ c, ClassTable* classtable);
+   bool process_method(method_class* method, Class_ c, ClassTable* classtable);
+   void process_class(Symbol curSym, ClassTable* classtable);
 
 public:
    program_class(Classes a1) {
@@ -164,13 +169,14 @@ public:
 
 // define constructor - class_
 class class__class : public Class__class {
-public:
+protected:
    Symbol name;
    Symbol parent;
    Features features;
    Symbol filename;
    std::set<Symbol> children;
 
+public:
    class__class(Symbol a1, Symbol a2, Features a3, Symbol a4) {
       name = a1;
       parent = a2;
@@ -179,6 +185,11 @@ public:
    }
    Class_ copy_Class_();
    void dump(ostream& stream, int n);
+   Symbol get_name() { return name; }
+   Symbol get_parent() { return parent; }
+   Features get_features() { return features; }
+   std::set<Symbol> get_children() { return children; }
+   void add_child(Symbol child) { children.insert(child); }
 
 #ifdef Class__SHARED_EXTRAS
    Class__SHARED_EXTRAS
@@ -191,12 +202,13 @@ public:
 
 // define constructor - method
 class method_class : public Feature_class {
-public:
+protected:
    Symbol name;
    Formals formals;
    Symbol return_type;
    Expression expr;
 
+public:
    method_class(Symbol a1, Formals a2, Symbol a3, Expression a4) {
       name = a1;
       formals = a2;
@@ -205,6 +217,11 @@ public:
    }
    Feature copy_Feature();
    void dump(ostream& stream, int n);
+
+   Symbol get_name() { return name; }
+   Formals get_formals() { return formals; }
+   Symbol get_return_type() { return return_type; }
+   Expression get_expr() { return expr; }
 
 #ifdef Feature_SHARED_EXTRAS
    Feature_SHARED_EXTRAS
@@ -217,11 +234,12 @@ public:
 
 // define constructor - attr
 class attr_class : public Feature_class {
-public:
+protected:
    Symbol name;
    Symbol type_decl;
    Expression init;
 
+public:
    attr_class(Symbol a1, Symbol a2, Expression a3) {
       name = a1;
       type_decl = a2;
@@ -229,6 +247,9 @@ public:
    }
    Feature copy_Feature();
    void dump(ostream& stream, int n);
+   Symbol get_name() { return name; }
+   Symbol get_type_decl() { return type_decl; }
+   Expression get_init() { return init; }
 
 #ifdef Feature_SHARED_EXTRAS
    Feature_SHARED_EXTRAS
@@ -251,8 +272,8 @@ public:
    }
    Formal copy_Formal();
    void dump(ostream& stream, int n);
-   Symbol getName() { return name; }
-   Symbol getType() { return type_decl; }
+   Symbol get_name() { return name; }
+   Symbol get_type() { return type_decl; }
 
 #ifdef Formal_SHARED_EXTRAS
    Formal_SHARED_EXTRAS

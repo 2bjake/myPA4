@@ -28,13 +28,12 @@ private:
   std::set<Symbol> classSymbols;
   SymbolTable<Symbol, Class__class> *tbl;
 
-  void addClass(Symbol name, Class_ c);
+  void add_class(Class_ c);
 
 public:
   ClassTable(Classes);
-  class__class* classForSymbol(Symbol symbol) {
-    return dynamic_cast<class__class*>(tbl->lookup(symbol));
-  }
+
+  Class_ class_for_symbol(Symbol symbol) { return tbl->lookup(symbol); }
   int errors() { return semant_errors; }
   ostream& semant_error();
   ostream& semant_error(Class_ c);
