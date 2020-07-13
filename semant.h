@@ -25,7 +25,7 @@ private:
   int semant_errors;
   void install_basic_classes();
   ostream& error_stream;
-  std::set<Symbol> classSymbols;
+  std::set<Symbol> class_symbols;
   SymbolTable<Symbol, Class__class> *tbl;
 
   void add_class(Class_ c);

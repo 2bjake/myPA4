@@ -38,7 +38,7 @@ public:
    tree_node *copy()		 { return copy_Class_(); }
    virtual Class_ copy_Class_() = 0;
    virtual Symbol get_name() = 0;
-   virtual Symbol get_parent() = 0;
+   virtual Symbol get_parent_sym() = 0;
    virtual Features get_features() = 0;
    virtual std::set<Symbol> get_children() = 0;
    virtual void add_child(Symbol child) = 0;
@@ -142,18 +142,18 @@ class ClassTable;
 class program_class : public Program_class {
 protected:
    Classes classes;
-   SymbolTable<Symbol, attr_class> *attrTbl;
-   SymbolTable<Symbol, method_class> *methodTbl;
+   SymbolTable<Symbol, attr_class> *attr_tbl;
+   SymbolTable<Symbol, method_class> *method_tbl;
 
    bool process_attr(attr_class* attr, Class_ c, ClassTable* classtable);
    bool process_method(method_class* method, Class_ c, ClassTable* classtable);
-   void process_class(Symbol curSym, ClassTable* classtable);
+   void process_class(Symbol cur_sym, ClassTable* classtable);
 
 public:
    program_class(Classes a1) {
       classes = a1;
-      attrTbl = new SymbolTable<Symbol, attr_class>();
-      methodTbl = new SymbolTable<Symbol, method_class>();
+      attr_tbl = new SymbolTable<Symbol, attr_class>();
+      method_tbl = new SymbolTable<Symbol, method_class>();
    }
    Program copy_Program();
    void dump(ostream& stream, int n);
@@ -186,7 +186,7 @@ public:
    Class_ copy_Class_();
    void dump(ostream& stream, int n);
    Symbol get_name() { return name; }
-   Symbol get_parent() { return parent; }
+   Symbol get_parent_sym() { return parent; }
    Features get_features() { return features; }
    std::set<Symbol> get_children() { return children; }
    void add_child(Symbol child) { children.insert(child); }
