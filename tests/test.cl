@@ -44,9 +44,26 @@ class C {
 
 class Foo {};
 
+class Bar inherits Foo {};
+
+class Baz {};
+(*
 class Main {
-    y: Int <- "hello";
+    fo: Foo <- new Object;
+    ff: Foo <- new Foo;
+    fb: Foo <- new Bar;
+    fz: Foo <- new Baz;
+    iv: Bool <- isvoid 1 + ~2 < 6 * 12;
+    jj: Foo <- new Jib;
+    y: Bool <- false;
+    i: Int <- ~true + 3;
     x: Foo <- new Foo;
     bar: Bool <- isvoid x;
     main(): Int { 5 };
+};
+*)
+
+class Main {
+    x: Bool <- new Foo = new Bar;
+    main(): Bool { x };
 };

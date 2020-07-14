@@ -48,6 +48,10 @@ public:
 #endif
 };
 
+class ClassTable;
+class attr_class;
+class method_class;
+class class__class;
 
 // define simple phylum - Feature
 typedef class Feature_class *Feature;
@@ -56,6 +60,7 @@ class Feature_class : public tree_node {
 public:
    tree_node *copy()		 { return copy_Feature(); }
    virtual Feature copy_Feature() = 0;
+   virtual bool typecheck(Class_ c, ClassTable* classtable, SymbolTable<Symbol, attr_class>* attr_tbl, SymbolTable<Symbol, method_class>* method_tbl) = 0;
 
 #ifdef Feature_EXTRAS
    Feature_EXTRAS
@@ -86,7 +91,7 @@ class Expression_class : public tree_node {
 public:
    tree_node *copy()		 { return copy_Expression(); }
    virtual Expression copy_Expression() = 0;
-   virtual Symbol calc_type() = 0;
+   virtual bool typecheck(Class_ c, ClassTable* classtable, SymbolTable<Symbol, attr_class>* attr_tbl, SymbolTable<Symbol, method_class>* method_tbl) { return false; }
 
 #ifdef Expression_EXTRAS
    Expression_EXTRAS
@@ -133,11 +138,6 @@ typedef Expressions_class *Expressions;
 typedef list_node<Case> Cases_class;
 typedef Cases_class *Cases;
 
-
-class attr_class;
-class method_class;
-class class__class;
-class ClassTable;
 // define the class for constructors
 // define constructor - program
 class program_class : public Program_class {
@@ -149,8 +149,6 @@ protected:
    void process_class(Symbol cur_sym, ClassTable* classtable);
    bool check_add_attr(attr_class* attr, Class_ c, ClassTable* classtable);
    bool check_add_method(method_class* method, Class_ c, ClassTable* classtable);
-   bool typecheck_attr(attr_class* attr, Class_ c, ClassTable* classtable);
-   bool typecheck_method(method_class* method, Class_ c, ClassTable* classtable);
 
 public:
    program_class(Classes a1) {
@@ -221,6 +219,7 @@ public:
    Feature copy_Feature();
    void dump(ostream& stream, int n);
 
+   bool typecheck(Class_ c, ClassTable* classtable, SymbolTable<Symbol, attr_class>* attr_tbl, SymbolTable<Symbol, method_class>* method_tbl);
    Symbol get_name() { return name; }
    Formals get_formals() { return formals; }
    Symbol get_return_type() { return return_type; }
@@ -250,6 +249,8 @@ public:
    }
    Feature copy_Feature();
    void dump(ostream& stream, int n);
+
+   bool typecheck(Class_ c, ClassTable* classtable, SymbolTable<Symbol, attr_class>* attr_tbl, SymbolTable<Symbol, method_class>* method_tbl);
    Symbol get_name() { return name; }
    Symbol get_type_decl() { return type_decl; }
    Expression get_init() { return init; }
@@ -323,7 +324,7 @@ public:
    }
    Expression copy_Expression();
    void dump(ostream& stream, int n);
-   Symbol calc_type() { return idtable.add_string("Object"); /* TODO */ }
+   //bool typecheck(Class_ c, ClassTable* classtable, SymbolTable<Symbol, attr_class>* attr_tbl, SymbolTable<Symbol, method_class>* method_tbl);
 
 #ifdef Expression_SHARED_EXTRAS
    Expression_SHARED_EXTRAS
@@ -350,7 +351,7 @@ public:
    }
    Expression copy_Expression();
    void dump(ostream& stream, int n);
-   Symbol calc_type() { return idtable.add_string("Object"); /* TODO */ }
+   //bool typecheck(Class_ c, ClassTable* classtable, SymbolTable<Symbol, attr_class>* attr_tbl, SymbolTable<Symbol, method_class>* method_tbl);
 
 #ifdef Expression_SHARED_EXTRAS
    Expression_SHARED_EXTRAS
@@ -375,7 +376,7 @@ public:
    }
    Expression copy_Expression();
    void dump(ostream& stream, int n);
-   Symbol calc_type() { return idtable.add_string("Object"); /* TODO */ }
+   //bool typecheck(Class_ c, ClassTable* classtable, SymbolTable<Symbol, attr_class>* attr_tbl, SymbolTable<Symbol, method_class>* method_tbl);
 
 #ifdef Expression_SHARED_EXTRAS
    Expression_SHARED_EXTRAS
@@ -400,7 +401,7 @@ public:
    }
    Expression copy_Expression();
    void dump(ostream& stream, int n);
-   Symbol calc_type() { return idtable.add_string("Object"); /* TODO */ }
+   //bool typecheck(Class_ c, ClassTable* classtable, SymbolTable<Symbol, attr_class>* attr_tbl, SymbolTable<Symbol, method_class>* method_tbl);
 
 #ifdef Expression_SHARED_EXTRAS
    Expression_SHARED_EXTRAS
@@ -420,11 +421,10 @@ public:
    loop_class(Expression a1, Expression a2) {
       pred = a1;
       body = a2;
-      type = idtable.add_string("Object");
    }
    Expression copy_Expression();
    void dump(ostream& stream, int n);
-   Symbol calc_type() { return type; }
+   //bool typecheck(Class_ c, ClassTable* classtable, SymbolTable<Symbol, attr_class>* attr_tbl, SymbolTable<Symbol, method_class>* method_tbl);
 
 #ifdef Expression_SHARED_EXTRAS
    Expression_SHARED_EXTRAS
@@ -447,7 +447,7 @@ public:
    }
    Expression copy_Expression();
    void dump(ostream& stream, int n);
-   Symbol calc_type() { return idtable.add_string("Object"); /* TODO */ }
+   //bool typecheck(Class_ c, ClassTable* classtable, SymbolTable<Symbol, attr_class>* attr_tbl, SymbolTable<Symbol, method_class>* method_tbl);
 
 #ifdef Expression_SHARED_EXTRAS
    Expression_SHARED_EXTRAS
@@ -468,7 +468,7 @@ public:
    }
    Expression copy_Expression();
    void dump(ostream& stream, int n);
-   Symbol calc_type() { return idtable.add_string("Object"); /* TODO */ }
+   //bool typecheck(Class_ c, ClassTable* classtable, SymbolTable<Symbol, attr_class>* attr_tbl, SymbolTable<Symbol, method_class>* method_tbl);
 
 #ifdef Expression_SHARED_EXTRAS
    Expression_SHARED_EXTRAS
@@ -495,7 +495,7 @@ public:
    }
    Expression copy_Expression();
    void dump(ostream& stream, int n);
-   Symbol calc_type() { return idtable.add_string("Object"); /* TODO */ }
+   //bool typecheck(Class_ c, ClassTable* classtable, SymbolTable<Symbol, attr_class>* attr_tbl, SymbolTable<Symbol, method_class>* method_tbl);
 
 #ifdef Expression_SHARED_EXTRAS
    Expression_SHARED_EXTRAS
@@ -515,11 +515,10 @@ public:
    plus_class(Expression a1, Expression a2) {
       e1 = a1;
       e2 = a2;
-      type = idtable.add_string("Int");
    }
    Expression copy_Expression();
    void dump(ostream& stream, int n);
-   Symbol calc_type() { return type; }
+   bool typecheck(Class_ c, ClassTable* classtable, SymbolTable<Symbol, attr_class>* attr_tbl, SymbolTable<Symbol, method_class>* method_tbl);
 
 #ifdef Expression_SHARED_EXTRAS
    Expression_SHARED_EXTRAS
@@ -539,11 +538,10 @@ public:
    sub_class(Expression a1, Expression a2) {
       e1 = a1;
       e2 = a2;
-      type = idtable.add_string("Int");
    }
    Expression copy_Expression();
    void dump(ostream& stream, int n);
-   Symbol calc_type() { return type; }
+   bool typecheck(Class_ c, ClassTable* classtable, SymbolTable<Symbol, attr_class>* attr_tbl, SymbolTable<Symbol, method_class>* method_tbl);
 
 #ifdef Expression_SHARED_EXTRAS
    Expression_SHARED_EXTRAS
@@ -563,11 +561,10 @@ public:
    mul_class(Expression a1, Expression a2) {
       e1 = a1;
       e2 = a2;
-      type = idtable.add_string("Int");
    }
    Expression copy_Expression();
    void dump(ostream& stream, int n);
-   Symbol calc_type() { return type; }
+   bool typecheck(Class_ c, ClassTable* classtable, SymbolTable<Symbol, attr_class>* attr_tbl, SymbolTable<Symbol, method_class>* method_tbl);
 
 #ifdef Expression_SHARED_EXTRAS
    Expression_SHARED_EXTRAS
@@ -587,11 +584,10 @@ public:
    divide_class(Expression a1, Expression a2) {
       e1 = a1;
       e2 = a2;
-      type = idtable.add_string("Int");
    }
    Expression copy_Expression();
    void dump(ostream& stream, int n);
-   Symbol calc_type() { return type; }
+   bool typecheck(Class_ c, ClassTable* classtable, SymbolTable<Symbol, attr_class>* attr_tbl, SymbolTable<Symbol, method_class>* method_tbl);
 
 #ifdef Expression_SHARED_EXTRAS
    Expression_SHARED_EXTRAS
@@ -609,11 +605,10 @@ protected:
 public:
    neg_class(Expression a1) {
       e1 = a1;
-      type = idtable.add_string("Int");
    }
    Expression copy_Expression();
    void dump(ostream& stream, int n);
-   Symbol calc_type() { return type; }
+   bool typecheck(Class_ c, ClassTable* classtable, SymbolTable<Symbol, attr_class>* attr_tbl, SymbolTable<Symbol, method_class>* method_tbl);
 
 #ifdef Expression_SHARED_EXTRAS
    Expression_SHARED_EXTRAS
@@ -633,11 +628,10 @@ public:
    lt_class(Expression a1, Expression a2) {
       e1 = a1;
       e2 = a2;
-      type = idtable.add_string("Bool");
    }
    Expression copy_Expression();
    void dump(ostream& stream, int n);
-   Symbol calc_type() { return type; }
+   bool typecheck(Class_ c, ClassTable* classtable, SymbolTable<Symbol, attr_class>* attr_tbl, SymbolTable<Symbol, method_class>* method_tbl);
 
 #ifdef Expression_SHARED_EXTRAS
    Expression_SHARED_EXTRAS
@@ -657,11 +651,10 @@ public:
    eq_class(Expression a1, Expression a2) {
       e1 = a1;
       e2 = a2;
-      type = idtable.add_string("Bool");
    }
    Expression copy_Expression();
    void dump(ostream& stream, int n);
-   Symbol calc_type() { return type; }
+   bool typecheck(Class_ c, ClassTable* classtable, SymbolTable<Symbol, attr_class>* attr_tbl, SymbolTable<Symbol, method_class>* method_tbl);
 
 #ifdef Expression_SHARED_EXTRAS
    Expression_SHARED_EXTRAS
@@ -681,11 +674,10 @@ public:
    leq_class(Expression a1, Expression a2) {
       e1 = a1;
       e2 = a2;
-      type = idtable.add_string("Bool");
    }
    Expression copy_Expression();
    void dump(ostream& stream, int n);
-   Symbol calc_type() { return type; }
+   bool typecheck(Class_ c, ClassTable* classtable, SymbolTable<Symbol, attr_class>* attr_tbl, SymbolTable<Symbol, method_class>* method_tbl);
 
 #ifdef Expression_SHARED_EXTRAS
    Expression_SHARED_EXTRAS
@@ -703,11 +695,10 @@ protected:
 public:
    comp_class(Expression a1) {
       e1 = a1;
-      type = idtable.add_string("Bool");
    }
    Expression copy_Expression();
    void dump(ostream& stream, int n);
-   Symbol calc_type() { return type; }
+   bool typecheck(Class_ c, ClassTable* classtable, SymbolTable<Symbol, attr_class>* attr_tbl, SymbolTable<Symbol, method_class>* method_tbl);
 
 #ifdef Expression_SHARED_EXTRAS
    Expression_SHARED_EXTRAS
@@ -725,11 +716,10 @@ protected:
 public:
    int_const_class(Symbol a1) {
       token = a1;
-      type = idtable.add_string("Int");
    }
    Expression copy_Expression();
    void dump(ostream& stream, int n);
-   Symbol calc_type() { return type; }
+   bool typecheck(Class_ c, ClassTable* classtable, SymbolTable<Symbol, attr_class>* attr_tbl, SymbolTable<Symbol, method_class>* method_tbl);
 
 #ifdef Expression_SHARED_EXTRAS
    Expression_SHARED_EXTRAS
@@ -747,11 +737,10 @@ protected:
 public:
    bool_const_class(Boolean a1) {
       val = a1;
-      type = idtable.add_string("Bool");
    }
    Expression copy_Expression();
    void dump(ostream& stream, int n);
-   Symbol calc_type() { return type; }
+   bool typecheck(Class_ c, ClassTable* classtable, SymbolTable<Symbol, attr_class>* attr_tbl, SymbolTable<Symbol, method_class>* method_tbl);
 
 #ifdef Expression_SHARED_EXTRAS
    Expression_SHARED_EXTRAS
@@ -769,11 +758,10 @@ protected:
 public:
    string_const_class(Symbol a1) {
       token = a1;
-      type = idtable.add_string("String");
    }
    Expression copy_Expression();
    void dump(ostream& stream, int n);
-      Symbol calc_type() { return type; }
+   bool typecheck(Class_ c, ClassTable* classtable, SymbolTable<Symbol, attr_class>* attr_tbl, SymbolTable<Symbol, method_class>* method_tbl);
 
 #ifdef Expression_SHARED_EXTRAS
    Expression_SHARED_EXTRAS
@@ -791,11 +779,10 @@ protected:
 public:
    new__class(Symbol a1) {
       type_name = a1;
-      type = a1; // TODO: handle SELF_TYPE
    }
    Expression copy_Expression();
    void dump(ostream& stream, int n);
-   Symbol calc_type() { return type; }
+   bool typecheck(Class_ c, ClassTable* classtable, SymbolTable<Symbol, attr_class>* attr_tbl, SymbolTable<Symbol, method_class>* method_tbl);
 
 #ifdef Expression_SHARED_EXTRAS
    Expression_SHARED_EXTRAS
@@ -813,11 +800,10 @@ protected:
 public:
    isvoid_class(Expression a1) {
       e1 = a1;
-      type = idtable.add_string("Bool");
    }
    Expression copy_Expression();
    void dump(ostream& stream, int n);
-   Symbol calc_type() { return type; }
+   bool typecheck(Class_ c, ClassTable* classtable, SymbolTable<Symbol, attr_class>* attr_tbl, SymbolTable<Symbol, method_class>* method_tbl);
 
 #ifdef Expression_SHARED_EXTRAS
    Expression_SHARED_EXTRAS
@@ -836,7 +822,7 @@ public:
    }
    Expression copy_Expression();
    void dump(ostream& stream, int n);
-   Symbol calc_type() { return NULL; }
+   //bool typecheck(Class_ c, ClassTable* classtable, SymbolTable<Symbol, attr_class>* attr_tbl, SymbolTable<Symbol, method_class>* method_tbl);
 
 #ifdef Expression_SHARED_EXTRAS
    Expression_SHARED_EXTRAS
@@ -857,7 +843,7 @@ public:
    }
    Expression copy_Expression();
    void dump(ostream& stream, int n);
-   Symbol calc_type() { return idtable.add_string("Object"); /* TODO */ }
+   //bool typecheck(Class_ c, ClassTable* classtable, SymbolTable<Symbol, attr_class>* attr_tbl, SymbolTable<Symbol, method_class>* method_tbl);
 
 #ifdef Expression_SHARED_EXTRAS
    Expression_SHARED_EXTRAS
