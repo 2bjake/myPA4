@@ -312,7 +312,7 @@ ostream& ClassTable::semant_error()
     return error_stream;
 }
 
-bool program_class::process_attr(attr_class* attr, Class_ c, ClassTable* classtable) {
+bool program_class::check_add_attr(attr_class* attr, Class_ c, ClassTable* classtable) {
     // check that the type is in classSymbols (or is SELF_TYPE)
     if (classtable->class_for_symbol(attr->get_type_decl()) == NULL && attr->get_type_decl() != SELF_TYPE) {
         classtable->semant_error(c->get_filename(), attr) << "Attribute " << attr->get_name() << " type " << attr->get_type_decl() << " is undefined" << std::endl;
@@ -335,7 +335,7 @@ bool program_class::process_attr(attr_class* attr, Class_ c, ClassTable* classta
     return true;
 }
 
-bool program_class::process_method(method_class* method, Class_ c, ClassTable* classtable) {
+bool program_class::check_add_method(method_class* method, Class_ c, ClassTable* classtable) {
     // check that the return type is in classSymbols (or is SELF_TYPE)
     if (classtable->class_for_symbol(method->get_return_type()) == NULL && method->get_return_type() != SELF_TYPE) {
         classtable->semant_error(c->get_filename(), method) << "Method " << method->get_name() << " return type " << method->get_return_type() << " is undefined" << std::endl;
@@ -399,6 +399,21 @@ bool program_class::process_method(method_class* method, Class_ c, ClassTable* c
     return true;
 }
 
+bool program_class::typecheck_attr(attr_class* attr, Class_ c, ClassTable* classtable) {
+    if (attr->get_init()->calc_type() != NULL) {
+        Symbol init_type = attr->get_init()->calc_type();
+        if (init_type != attr->get_type_decl()) {
+            classtable->semant_error(c->get_filename(), attr->get_init()) << "Initialization type " << init_type << " for attribute " << attr->get_name() << " does not match type " << attr->get_type_decl() << std::endl;
+            return false;
+        }
+    }
+    return true;
+}
+
+bool program_class::typecheck_method(method_class* attr, Class_ c, ClassTable* classtable) {
+    return false;
+}
+
 void program_class::process_class(Symbol cur_sym, ClassTable* classtable) {
     Class_ cur = classtable->class_for_symbol(cur_sym);
     attr_tbl->enterscope();
@@ -407,17 +422,38 @@ void program_class::process_class(Symbol cur_sym, ClassTable* classtable) {
     for(int i = features->first(); features->more(i); i = features->next(i)) {
         Feature f = features->nth(i);
         if (attr_class* attr = dynamic_cast<attr_class*>(f)) {
-            process_attr(attr, cur, classtable);
-        } else if(method_class* method = dynamic_cast<method_class*>(f)) {
-            process_method(method, cur, classtable);
+            check_add_attr(attr, cur, classtable);
+        } else if (method_class* method = dynamic_cast<method_class*>(f)) {
+            check_add_method(method, cur, classtable);
         }
     }
+
+    // check if Main class has a main method
+    if (cur_sym == Main && method_tbl->probe(main_meth) == NULL) {
+        classtable->semant_error(classtable->class_for_symbol(cur_sym)) << "class Main must have a main method" << std::endl;
+    }
+
+    // all of this class' valid attributes and methods are now in the table
+    // if this is not built-in class, go back through features and evaluate expressions and type check
+    if (cur_sym != Object && cur_sym != IO && cur_sym != Int && cur_sym != Str && cur_sym != Bool) {
+        for(int i = features->first(); features->more(i); i = features->next(i)) {
+            Feature f = features->nth(i);
+            if (attr_class* attr = dynamic_cast<attr_class*>(f)) {
+                typecheck_attr(attr, cur, classtable);
+            } else if (method_class* method = dynamic_cast<method_class*>(f)) {
+                typecheck_method(method, cur, classtable);
+            }
+        }
+    }
+
+    // process children classes
     std::set<Symbol> children = cur->get_children();
     for(std::set<Symbol>::iterator i = children.begin(); i != children.end(); i++ ) {
         if (*i != Bool && *i != Int && *i != Str) {
             process_class(*i, classtable);
         }
     }
+
     attr_tbl->exitscope();
     method_tbl->exitscope();
 }

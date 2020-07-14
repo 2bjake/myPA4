@@ -13,7 +13,6 @@ class A2 inherits A1 {};
 class A3 inherits A2 {};
 class A4 inherits A3 {};
 class Object {};
-*)
 
 class Main inherits IO {
     f(): Foo { 1 };
@@ -40,4 +39,14 @@ class C {
     g(self: Int): Int { 2 };
     f(): SELF_TYPE { 5 };
     self(): SELF_TYPE { 4 };
+};
+*)
+
+class Foo {};
+
+class Main {
+    y: Int <- "hello";
+    x: Foo <- new Foo;
+    bar: Bool <- isvoid x;
+    main(): Int { 5 };
 };
