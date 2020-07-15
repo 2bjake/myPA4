@@ -670,6 +670,7 @@ bool assign_class::typecheck(Class_ c, ClassTable* classtable, SymbolTable<Symbo
 
 // TODO: static_dispatch_class
 // TODO: dispach_class
+// TODO: typcase_class
 
 bool cond_class::typecheck(Class_ c, ClassTable* classtable, SymbolTable<Symbol, attr_class>* attr_tbl, SymbolTable<Symbol, method_class>* method_tbl) {
     bool pred_success = pred->typecheck(c, classtable, attr_tbl, method_tbl);
@@ -696,8 +697,17 @@ bool loop_class::typecheck(Class_ c, ClassTable* classtable, SymbolTable<Symbol,
     return true;
 }
 
-// TODO: typcase_class
-// TODO: let_class
+bool let_class::typecheck(Class_ c, ClassTable* classtable, SymbolTable<Symbol, attr_class>* attr_tbl, SymbolTable<Symbol, method_class>* method_tbl) {
+    if (init->has_expression()) { return false; } // TODO: handle init
+    attr_tbl->enterscope();
+    attr_tbl->addid(identifier, new attr_class(identifier, type_decl, no_expr()));
+    bool body_success = body->typecheck(c, classtable, attr_tbl, method_tbl);
+    if (body_success) {
+        type = body->get_type();
+    }
+    attr_tbl->exitscope();
+    return body_success;
+}
 
 bool block_class::typecheck(Class_ c, ClassTable* classtable, SymbolTable<Symbol, attr_class>* attr_tbl, SymbolTable<Symbol, method_class>* method_tbl) {
     Symbol last_type;

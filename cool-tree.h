@@ -496,7 +496,7 @@ public:
    }
    Expression copy_Expression();
    void dump(ostream& stream, int n);
-   //bool typecheck(Class_ c, ClassTable* classtable, SymbolTable<Symbol, attr_class>* attr_tbl, SymbolTable<Symbol, method_class>* method_tbl);
+   bool typecheck(Class_ c, ClassTable* classtable, SymbolTable<Symbol, attr_class>* attr_tbl, SymbolTable<Symbol, method_class>* method_tbl);
 
 #ifdef Expression_SHARED_EXTRAS
    Expression_SHARED_EXTRAS
