@@ -4,6 +4,7 @@
 #include <stdio.h>
 #include <stdarg.h>
 #include <set>
+#include <vector>
 #include "semant.h"
 #include "utilities.h"
 
@@ -485,6 +486,33 @@ bool ClassTable::conforms(Symbol c, Symbol super) {
     return false;
 }
 
+Symbol ClassTable::least_type(Symbol a, Symbol b) {
+    std::vector<Symbol> aPath;
+    Class_ cur = class_for_symbol(a);
+    while (cur != NULL) {
+        aPath.push_back(cur->get_name());
+        cur = class_for_symbol(cur->get_parent_sym());
+    }
+    int ai = aPath.size() - 1;
+
+    std::vector<Symbol> bPath;
+    cur = class_for_symbol(b);
+    while (cur != NULL) {
+        bPath.push_back(cur->get_name());
+        cur = class_for_symbol(cur->get_parent_sym());
+    }
+    int bi = bPath.size() - 1;
+
+    while (ai >= 0 && bi >= 0) {
+        if (aPath[ai] != bPath[bi]) {
+            break;
+        }
+        ai--;
+        bi--;
+    }
+    return aPath[ai + 1];
+}
+
 // typechecker functions
 
 void attr_class::typecheck(Class_ c, ClassTable* classtable, SymbolTable<Symbol, attr_class>* attr_tbl, SymbolTable<Symbol, method_class>* method_tbl) {
@@ -642,7 +670,19 @@ bool assign_class::typecheck(Class_ c, ClassTable* classtable, SymbolTable<Symbo
 
 // TODO: static_dispatch_class
 // TODO: dispach_class
-// TODO: cond_class
+
+bool cond_class::typecheck(Class_ c, ClassTable* classtable, SymbolTable<Symbol, attr_class>* attr_tbl, SymbolTable<Symbol, method_class>* method_tbl) {
+    bool pred_success = pred->typecheck(c, classtable, attr_tbl, method_tbl);
+    bool then_success = then_exp->typecheck(c, classtable, attr_tbl, method_tbl);
+    bool else_success = else_exp->typecheck(c, classtable, attr_tbl, method_tbl);
+    if (!pred_success || !then_success || !else_success) { return false; }
+    if (pred->get_type() != Bool) {
+        classtable->semant_error(c->get_filename(), pred) << "If predicate must be of type Bool" << std::endl;
+        return false;
+    }
+    type = classtable->least_type(then_exp->get_type(), else_exp->get_type());
+    return true;
+}
 
 bool loop_class::typecheck(Class_ c, ClassTable* classtable, SymbolTable<Symbol, attr_class>* attr_tbl, SymbolTable<Symbol, method_class>* method_tbl) {
     type = Object;

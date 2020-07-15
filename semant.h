@@ -35,6 +35,7 @@ public:
 
   Class_ class_for_symbol(Symbol symbol) { return tbl->lookup(symbol); }
   bool conforms(Symbol c, Symbol super);
+  Symbol least_type(Symbol a, Symbol b);
   int errors() { return semant_errors; }
   ostream& semant_error();
   ostream& semant_error(Class_ c);

@@ -63,8 +63,15 @@ class Main {
 };
 *)
 
+class O {};
+class A inherits O {};
+class B inherits A {};
+class C inherits B {};
+class AA inherits A {};
+class AB inherits AA {};
+
 class Main {
     f: Int <- true;
-    x: Int <- f;
+    x: Int <- if true then new C else new Object fi;
     main(): Bool { true };
 };
