@@ -64,6 +64,7 @@ class Main {
 *)
 
 class Main {
-    x: Bool <- new Foo = new Bar;
-    main(): Bool { x };
+    f: Int <- true;
+    x: Int <- f;
+    main(): Bool { true };
 };
