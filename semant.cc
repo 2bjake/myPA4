@@ -697,9 +697,22 @@ bool loop_class::typecheck(Class_ c, ClassTable* classtable, SymbolTable<Symbol,
 }
 
 // TODO: typcase_class
-// TODO: block_class
 // TODO: let_class
-// TODO: no_expr_class
+
+bool block_class::typecheck(Class_ c, ClassTable* classtable, SymbolTable<Symbol, attr_class>* attr_tbl, SymbolTable<Symbol, method_class>* method_tbl) {
+    Symbol last_type;
+    for(int i = body->first(); body->more(i); i = body->next(i)) {
+        bool success = body->nth(i)->typecheck(c, classtable, attr_tbl, method_tbl);
+        if (!success) { return false; }
+        last_type = body->nth(i)->get_type();
+    }
+    type = last_type;
+    return true;
+}
+
+bool no_expr_class::typecheck(Class_ c, ClassTable* classtable, SymbolTable<Symbol, attr_class>* attr_tbl, SymbolTable<Symbol, method_class>* method_tbl) {
+    return false;
+}
 
 bool object_class::typecheck(Class_ c, ClassTable* classtable, SymbolTable<Symbol, attr_class>* attr_tbl, SymbolTable<Symbol, method_class>* method_tbl) {
     attr_class* attr = attr_tbl->lookup(name);

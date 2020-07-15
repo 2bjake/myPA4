@@ -74,4 +74,11 @@ class Main {
     f: Int <- true;
     x: Int <- if true then new C else new Object fi;
     main(): Bool { true };
+    b: Int <- {
+        true;
+        false = 1;
+        2 + 3;
+        x <- 67;
+        "hi";
+    };
 };
