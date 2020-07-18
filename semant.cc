@@ -133,9 +133,11 @@ ClassTable::ClassTable(Classes classes) : semant_errors(0) , error_stream(cerr) 
         add_class(c);
     }
 
+    if (semant_errors > 0) { return; }
+
     // check that Main class is defined
     if (tbl->lookup(Main) == NULL) {
-        semant_error() << "Required class 'Main' not defined" << std::endl;
+        semant_error() << "Class Main is not defined." << std::endl;
     }
 
     install_basic_classes();
@@ -422,7 +424,7 @@ void program_class::process_class(Symbol cur_sym, ClassTable* classtable) {
     // if this is not built-in class, go back through features and evaluate expressions and type check
     if (cur_sym != Object && cur_sym != IO && cur_sym != Int && cur_sym != Str && cur_sym != Bool) {
         attr_tbl->enterscope();
-        attr_tbl->addid(self, cur_sym);
+        attr_tbl->addid(self, SELF_TYPE);
         for(int i = features->first(); features->more(i); i = features->next(i)) {
             features->nth(i)->typecheck(cur, classtable, attr_tbl);
         }
@@ -549,7 +551,7 @@ Symbol ClassTable::least_type(Symbol a, Symbol b) {
 void attr_class::typecheck(Class_ c, ClassTable* classtable, SymbolTable<Symbol, Entry>* attr_tbl) {
     if (init->has_expression()) {
         bool init_success = init->typecheck(c, classtable, attr_tbl);
-        if (init_success && !classtable->conforms(init->get_type(), true_type(c, type_decl))) {
+        if (init_success && !classtable->conforms(true_type(c, init->get_type()), true_type(c, type_decl))) {
             classtable->semant_error(c->get_filename(), init) << "Initialization type " << init->get_type() << " for attribute " << name << " does not conform to type " << type_decl << std::endl;
         }
     }
@@ -572,8 +574,9 @@ void method_class::typecheck(Class_ c, ClassTable* classtable, SymbolTable<Symbo
         attr_tbl->addid(f->get_name(), f->get_type());
     }
     bool expr_success = expr->typecheck(c, classtable, attr_tbl);
+    bool self_return = expr->get_type() == SELF_TYPE && return_type == SELF_TYPE;
 
-    if (!classtable->conforms(expr->get_type(), return_type)) {
+    if (!self_return && expr_success && !classtable->conforms(true_type(c, expr->get_type()), return_type)) {
         classtable->semant_error(c->get_filename(), expr) << "The type " << expr->get_type() << " returned from method " << name << " does not conform to the specified return type " << return_type << std::endl;
     }
 
@@ -687,7 +690,8 @@ bool neg_class::typecheck(Class_ c, ClassTable* classtable, SymbolTable<Symbol, 
 }
 
 bool new__class::typecheck(Class_ c, ClassTable* classtable, SymbolTable<Symbol, Entry>* attr_tbl) {
-    type = true_type(c, type_name);
+    type = type_name;
+    if (type == SELF_TYPE) { return true; }
     if (classtable->class_for_symbol(type) == NULL) {
         classtable->semant_error(c->get_filename(), this) << "'new' used with undefined class " << type << std::endl;
         return false;
@@ -701,6 +705,10 @@ bool isvoid_class::typecheck(Class_ c, ClassTable* classtable, SymbolTable<Symbo
 }
 
 bool assign_class::typecheck(Class_ c, ClassTable* classtable, SymbolTable<Symbol, Entry>* attr_tbl) {
+    if (name == self) {
+        classtable->semant_error(c->get_filename(), this) << "Cannot assign a value to self" << std::endl;
+    }
+
     Symbol attr_type = attr_tbl->lookup(name);
     bool expr_success = expr->typecheck(c, classtable, attr_tbl);
 
@@ -727,7 +735,7 @@ bool cond_class::typecheck(Class_ c, ClassTable* classtable, SymbolTable<Symbol,
         classtable->semant_error(c->get_filename(), pred) << "If predicate must be of type Bool" << std::endl;
         return false;
     }
-    type = classtable->least_type(then_exp->get_type(), else_exp->get_type());
+    type = classtable->least_type(true_type(c, then_exp->get_type()), true_type(c, else_exp->get_type()));
     return true;
 }
 
@@ -744,10 +752,14 @@ bool loop_class::typecheck(Class_ c, ClassTable* classtable, SymbolTable<Symbol,
 }
 
 bool let_class::typecheck(Class_ c, ClassTable* classtable, SymbolTable<Symbol, Entry>* attr_tbl) {
+    if (identifier == self) {
+        classtable->semant_error(c->get_filename(), this) << "Cannot assign a value to self" << std::endl;
+    }
+
     if (init->has_expression()) {
         bool init_success = init->typecheck(c, classtable, attr_tbl);
         if (!init_success) { return false; }
-        if (!classtable->conforms(init->get_type(), type_decl)) {
+        if (!classtable->conforms(true_type(c, init->get_type()), true_type(c, type_decl))) {
             classtable->semant_error(c->get_filename(), init) << "Initialization type " << init->get_type() << " for let " << identifier << " does not conform to type " << type_decl << std::endl;
             return false;
         }
@@ -795,14 +807,14 @@ bool dispatch_class::typecheck(Class_ c, ClassTable* classtable, SymbolTable<Sym
         if (!actual->nth(i)->typecheck(c, classtable, attr_tbl)) {
             return false;
         }
-        param_types.push_back(actual->nth(i)->get_type());
+        param_types.push_back(true_type(c, actual->nth(i)->get_type()));
     }
 
     Class_ dispatch_class = classtable->class_for_symbol(true_type(c, expr->get_type()));
     method_class* method = dispatch_class->get_matching_method(name, param_types, classtable);
 
     if (method == NULL) {
-        classtable->semant_error(c->get_filename(), this) << "There is no method named " << name << " on type " << expr->get_type() << " which take the specified parameters" << std::endl;
+        classtable->semant_error(c->get_filename(), this) << "There is no method named " << name << " on type " << true_type(c, expr->get_type()) << " which take the specified parameters" << std::endl;
         return false;
     }
     type = method->get_return_type() == SELF_TYPE ? expr->get_type() : method->get_return_type();
