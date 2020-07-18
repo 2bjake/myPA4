@@ -106,5 +106,5 @@ class Main {
         x: C1 => 3;
         y: C => 2;
         esac;
-    main(): Bool { true };
+    main(): Bool { 2 };
 };

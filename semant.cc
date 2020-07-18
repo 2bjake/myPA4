@@ -424,7 +424,7 @@ void program_class::process_class(Symbol cur_sym, ClassTable* classtable) {
         attr_tbl->enterscope();
         attr_tbl->addid(self, cur_sym);
         for(int i = features->first(); features->more(i); i = features->next(i)) {
-            features->nth(i)->typecheck(cur, classtable, attr_tbl); // TODO: problem, check_add_method needs to be called for all classes before we can start typechecking any classes....
+            features->nth(i)->typecheck(cur, classtable, attr_tbl);
         }
         attr_tbl->exitscope();
     }
@@ -557,7 +557,27 @@ void attr_class::typecheck(Class_ c, ClassTable* classtable, SymbolTable<Symbol,
 
 
 void method_class::typecheck(Class_ c, ClassTable* classtable, SymbolTable<Symbol, Entry>* attr_tbl) {
-    // TODO
+    attr_tbl->enterscope();
+    for (int i = formals->first(); formals->more(i); i = formals->next(i)) {
+        Formal f = formals->nth(i);
+
+        if (f->get_name() == self) {
+            classtable->semant_error(c->get_filename(), this) << "self cannot be used as a parameter name in function " << name << std::endl;
+        }
+
+        if (f->get_type() == SELF_TYPE) {
+            classtable->semant_error(c->get_filename(), this) << "SELF_TYPE cannot be used as a parameter type in function " << name << std::endl;
+        }
+
+        attr_tbl->addid(f->get_name(), f->get_type());
+    }
+    bool expr_success = expr->typecheck(c, classtable, attr_tbl);
+
+    if (!classtable->conforms(expr->get_type(), return_type)) {
+        classtable->semant_error(c->get_filename(), expr) << "The type " << expr->get_type() << " returned from method " << name << " does not conform to the specified return type " << return_type << std::endl;
+    }
+
+    attr_tbl->exitscope();
 }
 
 // contants
