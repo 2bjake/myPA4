@@ -794,6 +794,7 @@ bool static_dispatch_class::typecheck(Class_ c, ClassTable* classtable, SymbolTa
     if (!expr_success) { return false; }
     if (!classtable->conforms(expr->get_type(), type_name)) {
         classtable->semant_error(c->get_filename(), this) << "Expression does not conform to specified static dispatch type " << type_name << std::endl;
+        return false;
     }
 
     std::vector<Symbol> param_types;
@@ -815,4 +816,42 @@ bool static_dispatch_class::typecheck(Class_ c, ClassTable* classtable, SymbolTa
     return true;
 }
 
-// TODO: typcase_class
+bool typcase_class::typecheck(Class_ c, ClassTable* classtable, SymbolTable<Symbol, Entry>* attr_tbl) {
+    bool expr_success = expr->typecheck(c, classtable, attr_tbl);
+    if (!expr_success) { return false; }
+    std::set<Symbol> types;
+    Symbol join_type = NULL;
+    for(int i = cases->first(); cases->more(i); i = cases->next(i)) {
+        Case branch = cases->nth(i);
+
+        if (branch->get_name() == self) {
+            classtable->semant_error(c->get_filename(), branch) << "Cannot use 'self' as name of branch variable" << std::endl;
+            return false;
+        }
+
+        if (branch->get_type_decl() == SELF_TYPE) {
+            classtable->semant_error(c->get_filename(), branch) << "Cannot use SELF_TYPE as branch type" << std::endl;
+            return false;
+        }
+
+        std::pair<std::set<Symbol>::iterator, bool> result = types.insert(branch->get_type_decl());
+        if (!result.second) {
+            classtable->semant_error(c->get_filename(), branch) << "The same type " << branch->get_type_decl() << " cannot be specified in multiple case branches" << std::endl;
+            return false;
+        }
+
+        attr_tbl->enterscope();
+        attr_tbl->addid(branch->get_name(), branch->get_type_decl());
+        bool branch_success = branch->get_expr()->typecheck(c, classtable, attr_tbl);
+        if (!branch_success) { return false; }
+        attr_tbl->exitscope();
+
+        if (join_type == NULL) {
+            join_type = branch->get_expr()->get_type();
+        } else {
+            join_type = classtable->least_type(join_type, branch->get_expr()->get_type());
+        }
+    }
+    type = join_type;
+    return true;
+}

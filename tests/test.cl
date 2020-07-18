@@ -102,6 +102,9 @@ class Main {
     func(a: Main): SELF_TYPE { true };
     var: SELF_TYPE <- func(new SELF_TYPE);
     v: C1 <- new C1@C1.func();
-    v2: C1 <- new C1@C.func2();
+    v2: C <- case new C1 of
+        x: C1 => 3;
+        y: C => 2;
+        esac;
     main(): Bool { true };
 };
