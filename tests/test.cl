@@ -62,7 +62,7 @@ class Main {
     main(): Int { 5 };
 };
 *)
-
+(*
 class O {};
 class A inherits O {};
 class B inherits A {};
@@ -84,5 +84,24 @@ class Main {
     c: Int <- let x: Int <- x in x;
     d: Int <- x.doThing(1, 2, 3);
     e: IO <- new IO;
-    g: IO <- e.out_int(5);
+    g: Object <- e.out_int(5);
+};
+*)
+
+class A {};
+class B inherits A {};
+class C {
+    func2(): SELF_TYPE { new SELF_TYPE };
+};
+
+class C1 inherits C {
+    func(): SELF_TYPE { new C1 };
+};
+
+class Main {
+    func(a: Main): SELF_TYPE { true };
+    var: SELF_TYPE <- func(new SELF_TYPE);
+    v: C1 <- new C1@C1.func();
+    v2: C1 <- new C1@C.func2();
+    main(): Bool { true };
 };

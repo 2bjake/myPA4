@@ -498,26 +498,22 @@ Symbol true_type(Class_ c, Symbol type) {
     return (type == SELF_TYPE) ? c->get_name() : type;
 }
 
-bool class__class::has_method_of_type(Symbol name, Symbol return_type, std::vector<Symbol> param_types, ClassTable* classtable) {
+method_class* class__class::get_matching_method(Symbol name, std::vector<Symbol> param_types, ClassTable* classtable) {
     if (method_class* method = methods[name]) {
-        if (return_type != true_type(this, method->get_return_type())) {
-            return false;
-        }
-
         Formals formals = method->get_formals();
         if ((size_t)(formals->len()) != param_types.size()) {
-            return false;
+            return NULL;
         }
         for (int i = 0; i < formals->len(); i++) {
-            if (formals->nth(i)->get_type() != true_type(this, param_types[i])) {
-                return false;
+            if (!classtable->conforms(param_types[i], formals->nth(i)->get_type())) {
+                return NULL;
             }
         }
-        return true;
+        return method;
     } else if (Class_ p = classtable->class_for_symbol(parent)) {
-        return p->has_method_of_type(name, return_type, param_types, classtable);
+        return p->get_matching_method(name, param_types, classtable);
     } else {
-        return false;
+        return NULL;
     }
 }
 
@@ -552,9 +548,8 @@ Symbol ClassTable::least_type(Symbol a, Symbol b) {
 
 void attr_class::typecheck(Class_ c, ClassTable* classtable, SymbolTable<Symbol, Entry>* attr_tbl) {
     if (init->has_expression()) {
-        Symbol type = type_decl == SELF_TYPE ? c->get_name() : type_decl;
         bool init_success = init->typecheck(c, classtable, attr_tbl);
-        if (init_success && !classtable->conforms(init->get_type(), type)) {
+        if (init_success && !classtable->conforms(init->get_type(), true_type(c, type_decl))) {
             classtable->semant_error(c->get_filename(), init) << "Initialization type " << init->get_type() << " for attribute " << name << " does not conform to type " << type_decl << std::endl;
         }
     }
@@ -672,7 +667,7 @@ bool neg_class::typecheck(Class_ c, ClassTable* classtable, SymbolTable<Symbol, 
 }
 
 bool new__class::typecheck(Class_ c, ClassTable* classtable, SymbolTable<Symbol, Entry>* attr_tbl) {
-    type = type_name == SELF_TYPE ? c->get_name() : type_name;
+    type = true_type(c, type_name);
     if (classtable->class_for_symbol(type) == NULL) {
         classtable->semant_error(c->get_filename(), this) << "'new' used with undefined class " << type << std::endl;
         return false;
@@ -783,19 +778,41 @@ bool dispatch_class::typecheck(Class_ c, ClassTable* classtable, SymbolTable<Sym
         param_types.push_back(actual->nth(i)->get_type());
     }
 
+    Class_ dispatch_class = classtable->class_for_symbol(true_type(c, expr->get_type()));
+    method_class* method = dispatch_class->get_matching_method(name, param_types, classtable);
 
-    Symbol dispatch_to_sym = expr->get_type() == SELF_TYPE ? c->get_name() : expr->get_type();
-    Class_ dispatch_class = classtable->class_for_symbol(dispatch_to_sym);
-    // ask the class if there is a method that matches the type
-    // TODO: handle SELF_TYPE
-    if (!dispatch_class->has_method_of_type(name, expr->get_type(), param_types, classtable)) {
+    if (method == NULL) {
         classtable->semant_error(c->get_filename(), this) << "There is no method named " << name << " on type " << expr->get_type() << " which take the specified parameters" << std::endl;
         return false;
     }
-    type = expr->get_type();
+    type = method->get_return_type() == SELF_TYPE ? expr->get_type() : method->get_return_type();
     return true;
 }
 
+bool static_dispatch_class::typecheck(Class_ c, ClassTable* classtable, SymbolTable<Symbol, Entry>* attr_tbl) {
+    bool expr_success = expr->typecheck(c, classtable, attr_tbl);
+    if (!expr_success) { return false; }
+    if (!classtable->conforms(expr->get_type(), type_name)) {
+        classtable->semant_error(c->get_filename(), this) << "Expression does not conform to specified static dispatch type " << type_name << std::endl;
+    }
 
-// TODO: static_dispatch_class
+    std::vector<Symbol> param_types;
+    for(int i = actual->first(); actual->more(i); i = actual->next(i)) {
+        if (!actual->nth(i)->typecheck(c, classtable, attr_tbl)) {
+            return false;
+        }
+        param_types.push_back(actual->nth(i)->get_type());
+    }
+
+    Class_ dispatch_class = classtable->class_for_symbol(type_name);
+    method_class* method = dispatch_class->get_matching_method(name, param_types, classtable);
+
+    if (method == NULL) {
+        classtable->semant_error(c->get_filename(), this) << "There is no method named " << name << " on type " << type_name << " which take the specified parameters" << std::endl;
+        return false;
+    }
+    type = method->get_return_type() == SELF_TYPE ? expr->get_type() : method->get_return_type();
+    return true;
+}
+
 // TODO: typcase_class

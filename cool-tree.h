@@ -48,7 +48,7 @@ public:
    virtual Features get_features() = 0;
    virtual std::set<Symbol> get_children() = 0;
    virtual void add_child(Symbol child) = 0;
-   virtual bool has_method_of_type(Symbol name, Symbol return_type, std::vector<Symbol> param_types, ClassTable* classtable) = 0;
+   virtual method_class* get_matching_method(Symbol name, std::vector<Symbol> param_types, ClassTable* classtable) = 0;
 
 #ifdef Class__EXTRAS
    Class__EXTRAS
@@ -200,7 +200,7 @@ public:
    Features get_features() { return features; }
    std::set<Symbol> get_children() { return children; }
    void add_child(Symbol child) { children.insert(child); }
-   bool has_method_of_type(Symbol name, Symbol return_type, std::vector<Symbol> param_types, ClassTable* classtable);
+   method_class* get_matching_method(Symbol name, std::vector<Symbol> param_types, ClassTable* classtable);
 
 #ifdef Class__SHARED_EXTRAS
    Class__SHARED_EXTRAS
@@ -361,7 +361,7 @@ public:
    }
    Expression copy_Expression();
    void dump(ostream& stream, int n);
-   //bool typecheck(Class_ c, ClassTable* classtable, SymbolTable<Symbol, Entry>* attr_tbl);
+   bool typecheck(Class_ c, ClassTable* classtable, SymbolTable<Symbol, Entry>* attr_tbl);
 
 #ifdef Expression_SHARED_EXTRAS
    Expression_SHARED_EXTRAS
