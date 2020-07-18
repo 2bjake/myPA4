@@ -81,4 +81,8 @@ class Main {
         x <- 67;
         "hi";
     };
+    c: Int <- let x: Int <- x in x;
+    d: Int <- x.doThing(1, 2, 3);
+    e: IO <- new IO;
+    g: IO <- e.out_int(5);
 };

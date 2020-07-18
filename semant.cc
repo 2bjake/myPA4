@@ -395,7 +395,6 @@ bool program_class::check_add_method(method_class* method, Class_ c, ClassTable*
             }
         }
     }
-
     method_tbl->addid(method->get_name(), method);
     return true;
 }
@@ -425,7 +424,7 @@ void program_class::process_class(Symbol cur_sym, ClassTable* classtable) {
         attr_tbl->enterscope();
         attr_tbl->addid(self, cur_sym);
         for(int i = features->first(); features->more(i); i = features->next(i)) {
-            features->nth(i)->typecheck(cur, classtable, attr_tbl, method_tbl);
+            features->nth(i)->typecheck(cur, classtable, attr_tbl, method_tbl); // TODO: problem, check_add_method needs to be called for all classes before we can start typechecking any classes....
         }
         attr_tbl->exitscope();
     }
@@ -469,10 +468,19 @@ void program_class::semant()
 
     process_class(Object, classtable);
 
-        if (classtable->errors()) {
+    if (classtable->errors()) {
 	    cerr << "Compilation halted due to static semantic errors." << endl;
 	    exit(1);
     }
+}
+
+void class__class::index_methods() {
+      for(int i = features->first(); features->more(i); i = features->next(i)) {
+         Feature f = features->nth(i);
+         if (method_class* method = dynamic_cast<method_class*>(f)) {
+            methods[method->get_name()] = method;
+         }
+      }
 }
 
 bool ClassTable::conforms(Symbol c, Symbol super) {
@@ -484,6 +492,33 @@ bool ClassTable::conforms(Symbol c, Symbol super) {
         cur = class_for_symbol(cur->get_parent_sym());
     }
     return false;
+}
+
+Symbol true_type(Class_ c, Symbol type) {
+    return (type == SELF_TYPE) ? c->get_name() : type;
+}
+
+bool class__class::has_method_of_type(Symbol name, Symbol return_type, std::vector<Symbol> param_types, ClassTable* classtable) {
+    if (method_class* method = methods[name]) {
+        if (return_type != true_type(this, method->get_return_type())) {
+            return false;
+        }
+
+        Formals formals = method->get_formals();
+        if ((size_t)(formals->len()) != param_types.size()) {
+            return false;
+        }
+        for (int i = 0; i < formals->len(); i++) {
+            if (formals->nth(i)->get_type() != true_type(this, param_types[i])) {
+                return false;
+            }
+        }
+        return true;
+    } else if (Class_ p = classtable->class_for_symbol(parent)) {
+        return p->has_method_of_type(name, return_type, param_types, classtable);
+    } else {
+        return false;
+    }
 }
 
 Symbol ClassTable::least_type(Symbol a, Symbol b) {
@@ -654,7 +689,7 @@ bool assign_class::typecheck(Class_ c, ClassTable* classtable, SymbolTable<Symbo
     Symbol attr_type = attr_tbl->lookup(name);
     bool expr_success = expr->typecheck(c, classtable, attr_tbl, method_tbl);
 
-    if (attr == NULL) {
+    if (attr_type == NULL) {
         classtable->semant_error(c->get_filename(), this) << name << " is undefined" << std::endl;
         return false;
     } else if (!expr_success) {
@@ -667,10 +702,6 @@ bool assign_class::typecheck(Class_ c, ClassTable* classtable, SymbolTable<Symbo
         return true;
     }
 }
-
-// TODO: static_dispatch_class
-// TODO: dispach_class
-// TODO: typcase_class
 
 bool cond_class::typecheck(Class_ c, ClassTable* classtable, SymbolTable<Symbol, Entry>* attr_tbl, SymbolTable<Symbol, method_class>* method_tbl) {
     bool pred_success = pred->typecheck(c, classtable, attr_tbl, method_tbl);
@@ -698,7 +729,14 @@ bool loop_class::typecheck(Class_ c, ClassTable* classtable, SymbolTable<Symbol,
 }
 
 bool let_class::typecheck(Class_ c, ClassTable* classtable, SymbolTable<Symbol, Entry>* attr_tbl, SymbolTable<Symbol, method_class>* method_tbl) {
-    if (init->has_expression()) { return false; } // TODO: handle init
+    if (init->has_expression()) {
+        bool init_success = init->typecheck(c, classtable, attr_tbl, method_tbl);
+        if (!init_success) { return false; }
+        if (!classtable->conforms(init->get_type(), type_decl)) {
+            classtable->semant_error(c->get_filename(), init) << "Initialization type " << init->get_type() << " for let " << identifier << " does not conform to type " << type_decl << std::endl;
+            return false;
+        }
+    }
     attr_tbl->enterscope();
     attr_tbl->addid(identifier, type_decl);
     bool body_success = body->typecheck(c, classtable, attr_tbl, method_tbl);
@@ -733,3 +771,31 @@ bool object_class::typecheck(Class_ c, ClassTable* classtable, SymbolTable<Symbo
     type = attr_type;
     return true;
 }
+
+bool dispatch_class::typecheck(Class_ c, ClassTable* classtable, SymbolTable<Symbol, Entry>* attr_tbl, SymbolTable<Symbol, method_class>* method_tbl) {
+    bool expr_success = expr->typecheck(c, classtable, attr_tbl, method_tbl);
+    if (!expr_success) { return false; }
+    std::vector<Symbol> param_types;
+    for(int i = actual->first(); actual->more(i); i = actual->next(i)) {
+        if (!actual->nth(i)->typecheck(c, classtable, attr_tbl, method_tbl)) {
+            return false;
+        }
+        param_types.push_back(actual->nth(i)->get_type());
+    }
+
+
+    Symbol dispatch_to_sym = expr->get_type() == SELF_TYPE ? c->get_name() : expr->get_type();
+    Class_ dispatch_class = classtable->class_for_symbol(dispatch_to_sym);
+    // ask the class if there is a method that matches the type
+    // TODO: handle SELF_TYPE
+    if (!dispatch_class->has_method_of_type(name, expr->get_type(), param_types, classtable)) {
+        classtable->semant_error(c->get_filename(), this) << "There is no method named " << name << " on type " << expr->get_type() << " which take the specified parameters" << std::endl;
+        return false;
+    }
+    type = expr->get_type();
+    return true;
+}
+
+
+// TODO: static_dispatch_class
+// TODO: typcase_class

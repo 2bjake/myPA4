@@ -12,8 +12,14 @@
 #include "tree.h"
 #include "cool-tree.handcode.h"
 #include "symtab.h"
+#include <map>
 #include <set>
+#include <vector>
 
+class ClassTable;
+class attr_class;
+class method_class;
+class class__class;
 
 // define the class for phylum
 // define simple phylum - Program
@@ -42,16 +48,14 @@ public:
    virtual Features get_features() = 0;
    virtual std::set<Symbol> get_children() = 0;
    virtual void add_child(Symbol child) = 0;
+   virtual bool has_method_of_type(Symbol name, Symbol return_type, std::vector<Symbol> param_types, ClassTable* classtable) = 0;
 
 #ifdef Class__EXTRAS
    Class__EXTRAS
 #endif
 };
 
-class ClassTable;
-class attr_class;
-class method_class;
-class class__class;
+
 
 // define simple phylum - Feature
 typedef class Feature_class *Feature;
@@ -177,6 +181,8 @@ protected:
    Features features;
    Symbol filename;
    std::set<Symbol> children;
+   std::map<Symbol, method_class*> methods;
+   void index_methods();
 
 public:
    class__class(Symbol a1, Symbol a2, Features a3, Symbol a4) {
@@ -184,6 +190,8 @@ public:
       parent = a2;
       features = a3;
       filename = a4;
+
+      index_methods();
    }
    Class_ copy_Class_();
    void dump(ostream& stream, int n);
@@ -192,6 +200,7 @@ public:
    Features get_features() { return features; }
    std::set<Symbol> get_children() { return children; }
    void add_child(Symbol child) { children.insert(child); }
+   bool has_method_of_type(Symbol name, Symbol return_type, std::vector<Symbol> param_types, ClassTable* classtable);
 
 #ifdef Class__SHARED_EXTRAS
    Class__SHARED_EXTRAS
@@ -377,7 +386,7 @@ public:
    }
    Expression copy_Expression();
    void dump(ostream& stream, int n);
-   //bool typecheck(Class_ c, ClassTable* classtable, SymbolTable<Symbol, Entry>* attr_tbl, SymbolTable<Symbol, method_class>* method_tbl);
+   bool typecheck(Class_ c, ClassTable* classtable, SymbolTable<Symbol, Entry>* attr_tbl, SymbolTable<Symbol, method_class>* method_tbl);
 
 #ifdef Expression_SHARED_EXTRAS
    Expression_SHARED_EXTRAS
