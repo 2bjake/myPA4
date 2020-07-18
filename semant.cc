@@ -424,7 +424,7 @@ void program_class::process_class(Symbol cur_sym, ClassTable* classtable) {
         attr_tbl->enterscope();
         attr_tbl->addid(self, cur_sym);
         for(int i = features->first(); features->more(i); i = features->next(i)) {
-            features->nth(i)->typecheck(cur, classtable, attr_tbl, method_tbl); // TODO: problem, check_add_method needs to be called for all classes before we can start typechecking any classes....
+            features->nth(i)->typecheck(cur, classtable, attr_tbl); // TODO: problem, check_add_method needs to be called for all classes before we can start typechecking any classes....
         }
         attr_tbl->exitscope();
     }
@@ -550,10 +550,10 @@ Symbol ClassTable::least_type(Symbol a, Symbol b) {
 
 // typechecker functions
 
-void attr_class::typecheck(Class_ c, ClassTable* classtable, SymbolTable<Symbol, Entry>* attr_tbl, SymbolTable<Symbol, method_class>* method_tbl) {
+void attr_class::typecheck(Class_ c, ClassTable* classtable, SymbolTable<Symbol, Entry>* attr_tbl) {
     if (init->has_expression()) {
         Symbol type = type_decl == SELF_TYPE ? c->get_name() : type_decl;
-        bool init_success = init->typecheck(c, classtable, attr_tbl, method_tbl);
+        bool init_success = init->typecheck(c, classtable, attr_tbl);
         if (init_success && !classtable->conforms(init->get_type(), type)) {
             classtable->semant_error(c->get_filename(), init) << "Initialization type " << init->get_type() << " for attribute " << name << " does not conform to type " << type_decl << std::endl;
         }
@@ -561,32 +561,32 @@ void attr_class::typecheck(Class_ c, ClassTable* classtable, SymbolTable<Symbol,
 }
 
 
-void method_class::typecheck(Class_ c, ClassTable* classtable, SymbolTable<Symbol, Entry>* attr_tbl, SymbolTable<Symbol, method_class>* method_tbl) {
+void method_class::typecheck(Class_ c, ClassTable* classtable, SymbolTable<Symbol, Entry>* attr_tbl) {
     // TODO
 }
 
 // contants
 
-bool int_const_class::typecheck(Class_ c, ClassTable* classtable, SymbolTable<Symbol, Entry>* attr_tbl, SymbolTable<Symbol, method_class>* method_tbl) {
+bool int_const_class::typecheck(Class_ c, ClassTable* classtable, SymbolTable<Symbol, Entry>* attr_tbl) {
     type = Int;
     return true;
 }
 
-bool bool_const_class::typecheck(Class_ c, ClassTable* classtable, SymbolTable<Symbol, Entry>* attr_tbl, SymbolTable<Symbol, method_class>* method_tbl) {
+bool bool_const_class::typecheck(Class_ c, ClassTable* classtable, SymbolTable<Symbol, Entry>* attr_tbl) {
     type = Bool;
     return true;
 }
 
-bool string_const_class::typecheck(Class_ c, ClassTable* classtable, SymbolTable<Symbol, Entry>* attr_tbl, SymbolTable<Symbol, method_class>* method_tbl) {
+bool string_const_class::typecheck(Class_ c, ClassTable* classtable, SymbolTable<Symbol, Entry>* attr_tbl) {
     type = Str;
     return true;
 }
 
 // binary operators
 
-bool binary_op_typecheck(Class_ c, ClassTable* classtable, SymbolTable<Symbol, Entry>* attr_tbl, SymbolTable<Symbol, method_class>* method_tbl, Expression e1, Expression e2, Symbol type, Symbol op) {
-    bool e1_success = e1->typecheck(c, classtable, attr_tbl, method_tbl);
-    bool e2_success = e2->typecheck(c, classtable, attr_tbl, method_tbl);
+bool binary_op_typecheck(Class_ c, ClassTable* classtable, SymbolTable<Symbol, Entry>* attr_tbl, Expression e1, Expression e2, Symbol type, Symbol op) {
+    bool e1_success = e1->typecheck(c, classtable, attr_tbl);
+    bool e2_success = e2->typecheck(c, classtable, attr_tbl);
     if (!e1_success || !e2_success) {
         return false;
     } else if (e1->get_type() != type || e2->get_type() != type) {
@@ -597,42 +597,42 @@ bool binary_op_typecheck(Class_ c, ClassTable* classtable, SymbolTable<Symbol, E
     }
 }
 
-bool plus_class::typecheck(Class_ c, ClassTable* classtable, SymbolTable<Symbol, Entry>* attr_tbl, SymbolTable<Symbol, method_class>* method_tbl) {
+bool plus_class::typecheck(Class_ c, ClassTable* classtable, SymbolTable<Symbol, Entry>* attr_tbl) {
     type = Int;
-    return binary_op_typecheck(c, classtable, attr_tbl, method_tbl, e1, e2, type, idtable.add_string("+"));
+    return binary_op_typecheck(c, classtable, attr_tbl, e1, e2, type, idtable.add_string("+"));
 }
 
-bool sub_class::typecheck(Class_ c, ClassTable* classtable, SymbolTable<Symbol, Entry>* attr_tbl, SymbolTable<Symbol, method_class>* method_tbl) {
+bool sub_class::typecheck(Class_ c, ClassTable* classtable, SymbolTable<Symbol, Entry>* attr_tbl) {
     type = Int;
-    return binary_op_typecheck(c, classtable, attr_tbl, method_tbl, e1, e2, type, idtable.add_string("-"));
+    return binary_op_typecheck(c, classtable, attr_tbl, e1, e2, type, idtable.add_string("-"));
 }
 
-bool mul_class::typecheck(Class_ c, ClassTable* classtable, SymbolTable<Symbol, Entry>* attr_tbl, SymbolTable<Symbol, method_class>* method_tbl) {
+bool mul_class::typecheck(Class_ c, ClassTable* classtable, SymbolTable<Symbol, Entry>* attr_tbl) {
     type = Int;
-    return binary_op_typecheck(c, classtable, attr_tbl, method_tbl, e1, e2, type, idtable.add_string("*"));
+    return binary_op_typecheck(c, classtable, attr_tbl, e1, e2, type, idtable.add_string("*"));
 }
 
-bool divide_class::typecheck(Class_ c, ClassTable* classtable, SymbolTable<Symbol, Entry>* attr_tbl, SymbolTable<Symbol, method_class>* method_tbl) {
+bool divide_class::typecheck(Class_ c, ClassTable* classtable, SymbolTable<Symbol, Entry>* attr_tbl) {
     type = Int;
-    return binary_op_typecheck(c, classtable, attr_tbl, method_tbl, e1, e2, type, idtable.add_string("/"));
+    return binary_op_typecheck(c, classtable, attr_tbl, e1, e2, type, idtable.add_string("/"));
 }
 
-bool lt_class::typecheck(Class_ c, ClassTable* classtable, SymbolTable<Symbol, Entry>* attr_tbl, SymbolTable<Symbol, method_class>* method_tbl) {
+bool lt_class::typecheck(Class_ c, ClassTable* classtable, SymbolTable<Symbol, Entry>* attr_tbl) {
     type = Bool;
-    return binary_op_typecheck(c, classtable, attr_tbl, method_tbl, e1, e2, Int, idtable.add_string("<"));
+    return binary_op_typecheck(c, classtable, attr_tbl, e1, e2, Int, idtable.add_string("<"));
 }
 
-bool leq_class::typecheck(Class_ c, ClassTable* classtable, SymbolTable<Symbol, Entry>* attr_tbl, SymbolTable<Symbol, method_class>* method_tbl) {
+bool leq_class::typecheck(Class_ c, ClassTable* classtable, SymbolTable<Symbol, Entry>* attr_tbl) {
     type = Bool;
-    return binary_op_typecheck(c, classtable, attr_tbl, method_tbl, e1, e2, Int, idtable.add_string("<="));
+    return binary_op_typecheck(c, classtable, attr_tbl, e1, e2, Int, idtable.add_string("<="));
 }
 
-bool eq_class::typecheck(Class_ c, ClassTable* classtable, SymbolTable<Symbol, Entry>* attr_tbl, SymbolTable<Symbol, method_class>* method_tbl) {
+bool eq_class::typecheck(Class_ c, ClassTable* classtable, SymbolTable<Symbol, Entry>* attr_tbl) {
     type = Bool;
-    bool e1_success = e1->typecheck(c, classtable, attr_tbl, method_tbl);
+    bool e1_success = e1->typecheck(c, classtable, attr_tbl);
     bool e1_is_constant = e1->get_type() == Int || e1->get_type() == Str || e1->get_type() == Bool;
 
-    bool e2_success = e2->typecheck(c, classtable, attr_tbl, method_tbl);
+    bool e2_success = e2->typecheck(c, classtable, attr_tbl);
     bool e2_is_constant = e2->get_type() == Int || e2->get_type() == Str || e2->get_type() == Bool;
 
     bool constant_mismatch = (e1_is_constant || e2_is_constant) && e1->get_type() != e2->get_type();
@@ -649,8 +649,8 @@ bool eq_class::typecheck(Class_ c, ClassTable* classtable, SymbolTable<Symbol, E
 
 // unary operators
 
-bool unary_op_typecheck(Class_ c, ClassTable* classtable, SymbolTable<Symbol, Entry>* attr_tbl, SymbolTable<Symbol, method_class>* method_tbl, Expression e1, Symbol type, Symbol op) {
-    bool e1_success = e1->typecheck(c, classtable, attr_tbl, method_tbl);
+bool unary_op_typecheck(Class_ c, ClassTable* classtable, SymbolTable<Symbol, Entry>* attr_tbl, Expression e1, Symbol type, Symbol op) {
+    bool e1_success = e1->typecheck(c, classtable, attr_tbl);
     if (!e1_success) {
         return false;
     } else if (e1->get_type() != type) {
@@ -661,17 +661,17 @@ bool unary_op_typecheck(Class_ c, ClassTable* classtable, SymbolTable<Symbol, En
     }
 }
 
-bool comp_class::typecheck(Class_ c, ClassTable* classtable, SymbolTable<Symbol, Entry>* attr_tbl, SymbolTable<Symbol, method_class>* method_tbl) {
+bool comp_class::typecheck(Class_ c, ClassTable* classtable, SymbolTable<Symbol, Entry>* attr_tbl) {
     type = Bool;
-    return unary_op_typecheck(c, classtable, attr_tbl, method_tbl, e1, type, idtable.add_string("not"));
+    return unary_op_typecheck(c, classtable, attr_tbl, e1, type, idtable.add_string("not"));
 }
 
-bool neg_class::typecheck(Class_ c, ClassTable* classtable, SymbolTable<Symbol, Entry>* attr_tbl, SymbolTable<Symbol, method_class>* method_tbl) {
+bool neg_class::typecheck(Class_ c, ClassTable* classtable, SymbolTable<Symbol, Entry>* attr_tbl) {
     type = Int;
-    return unary_op_typecheck(c, classtable, attr_tbl, method_tbl, e1, type, idtable.add_string("~"));
+    return unary_op_typecheck(c, classtable, attr_tbl, e1, type, idtable.add_string("~"));
 }
 
-bool new__class::typecheck(Class_ c, ClassTable* classtable, SymbolTable<Symbol, Entry>* attr_tbl, SymbolTable<Symbol, method_class>* method_tbl) {
+bool new__class::typecheck(Class_ c, ClassTable* classtable, SymbolTable<Symbol, Entry>* attr_tbl) {
     type = type_name == SELF_TYPE ? c->get_name() : type_name;
     if (classtable->class_for_symbol(type) == NULL) {
         classtable->semant_error(c->get_filename(), this) << "'new' used with undefined class " << type << std::endl;
@@ -680,14 +680,14 @@ bool new__class::typecheck(Class_ c, ClassTable* classtable, SymbolTable<Symbol,
     return true;
 }
 
-bool isvoid_class::typecheck(Class_ c, ClassTable* classtable, SymbolTable<Symbol, Entry>* attr_tbl, SymbolTable<Symbol, method_class>* method_tbl) {
+bool isvoid_class::typecheck(Class_ c, ClassTable* classtable, SymbolTable<Symbol, Entry>* attr_tbl) {
     type = Bool;
-    return e1->typecheck(c, classtable, attr_tbl, method_tbl);
+    return e1->typecheck(c, classtable, attr_tbl);
 }
 
-bool assign_class::typecheck(Class_ c, ClassTable* classtable, SymbolTable<Symbol, Entry>* attr_tbl, SymbolTable<Symbol, method_class>* method_tbl) {
+bool assign_class::typecheck(Class_ c, ClassTable* classtable, SymbolTable<Symbol, Entry>* attr_tbl) {
     Symbol attr_type = attr_tbl->lookup(name);
-    bool expr_success = expr->typecheck(c, classtable, attr_tbl, method_tbl);
+    bool expr_success = expr->typecheck(c, classtable, attr_tbl);
 
     if (attr_type == NULL) {
         classtable->semant_error(c->get_filename(), this) << name << " is undefined" << std::endl;
@@ -703,10 +703,10 @@ bool assign_class::typecheck(Class_ c, ClassTable* classtable, SymbolTable<Symbo
     }
 }
 
-bool cond_class::typecheck(Class_ c, ClassTable* classtable, SymbolTable<Symbol, Entry>* attr_tbl, SymbolTable<Symbol, method_class>* method_tbl) {
-    bool pred_success = pred->typecheck(c, classtable, attr_tbl, method_tbl);
-    bool then_success = then_exp->typecheck(c, classtable, attr_tbl, method_tbl);
-    bool else_success = else_exp->typecheck(c, classtable, attr_tbl, method_tbl);
+bool cond_class::typecheck(Class_ c, ClassTable* classtable, SymbolTable<Symbol, Entry>* attr_tbl) {
+    bool pred_success = pred->typecheck(c, classtable, attr_tbl);
+    bool then_success = then_exp->typecheck(c, classtable, attr_tbl);
+    bool else_success = else_exp->typecheck(c, classtable, attr_tbl);
     if (!pred_success || !then_success || !else_success) { return false; }
     if (pred->get_type() != Bool) {
         classtable->semant_error(c->get_filename(), pred) << "If predicate must be of type Bool" << std::endl;
@@ -716,10 +716,10 @@ bool cond_class::typecheck(Class_ c, ClassTable* classtable, SymbolTable<Symbol,
     return true;
 }
 
-bool loop_class::typecheck(Class_ c, ClassTable* classtable, SymbolTable<Symbol, Entry>* attr_tbl, SymbolTable<Symbol, method_class>* method_tbl) {
+bool loop_class::typecheck(Class_ c, ClassTable* classtable, SymbolTable<Symbol, Entry>* attr_tbl) {
     type = Object;
-    bool pred_success = pred->typecheck(c, classtable, attr_tbl, method_tbl);
-    bool body_success = body->typecheck(c, classtable, attr_tbl, method_tbl);
+    bool pred_success = pred->typecheck(c, classtable, attr_tbl);
+    bool body_success = body->typecheck(c, classtable, attr_tbl);
     if (!pred_success || !body_success) { return false; }
     if (pred->get_type() != Bool) {
         classtable->semant_error(c->get_filename(), pred) << "Loop predicate must be of type Bool" << std::endl;
@@ -728,9 +728,9 @@ bool loop_class::typecheck(Class_ c, ClassTable* classtable, SymbolTable<Symbol,
     return true;
 }
 
-bool let_class::typecheck(Class_ c, ClassTable* classtable, SymbolTable<Symbol, Entry>* attr_tbl, SymbolTable<Symbol, method_class>* method_tbl) {
+bool let_class::typecheck(Class_ c, ClassTable* classtable, SymbolTable<Symbol, Entry>* attr_tbl) {
     if (init->has_expression()) {
-        bool init_success = init->typecheck(c, classtable, attr_tbl, method_tbl);
+        bool init_success = init->typecheck(c, classtable, attr_tbl);
         if (!init_success) { return false; }
         if (!classtable->conforms(init->get_type(), type_decl)) {
             classtable->semant_error(c->get_filename(), init) << "Initialization type " << init->get_type() << " for let " << identifier << " does not conform to type " << type_decl << std::endl;
@@ -739,7 +739,7 @@ bool let_class::typecheck(Class_ c, ClassTable* classtable, SymbolTable<Symbol, 
     }
     attr_tbl->enterscope();
     attr_tbl->addid(identifier, type_decl);
-    bool body_success = body->typecheck(c, classtable, attr_tbl, method_tbl);
+    bool body_success = body->typecheck(c, classtable, attr_tbl);
     if (body_success) {
         type = body->get_type();
     }
@@ -747,10 +747,10 @@ bool let_class::typecheck(Class_ c, ClassTable* classtable, SymbolTable<Symbol, 
     return body_success;
 }
 
-bool block_class::typecheck(Class_ c, ClassTable* classtable, SymbolTable<Symbol, Entry>* attr_tbl, SymbolTable<Symbol, method_class>* method_tbl) {
+bool block_class::typecheck(Class_ c, ClassTable* classtable, SymbolTable<Symbol, Entry>* attr_tbl) {
     Symbol last_type;
     for(int i = body->first(); body->more(i); i = body->next(i)) {
-        bool success = body->nth(i)->typecheck(c, classtable, attr_tbl, method_tbl);
+        bool success = body->nth(i)->typecheck(c, classtable, attr_tbl);
         if (!success) { return false; }
         last_type = body->nth(i)->get_type();
     }
@@ -758,11 +758,11 @@ bool block_class::typecheck(Class_ c, ClassTable* classtable, SymbolTable<Symbol
     return true;
 }
 
-bool no_expr_class::typecheck(Class_ c, ClassTable* classtable, SymbolTable<Symbol, Entry>* attr_tbl, SymbolTable<Symbol, method_class>* method_tbl) {
+bool no_expr_class::typecheck(Class_ c, ClassTable* classtable, SymbolTable<Symbol, Entry>* attr_tbl) {
     return false;
 }
 
-bool object_class::typecheck(Class_ c, ClassTable* classtable, SymbolTable<Symbol, Entry>* attr_tbl, SymbolTable<Symbol, method_class>* method_tbl) {
+bool object_class::typecheck(Class_ c, ClassTable* classtable, SymbolTable<Symbol, Entry>* attr_tbl) {
     Symbol attr_type = attr_tbl->lookup(name);
     if (attr_type == NULL) {
         classtable->semant_error(c->get_filename(), this) << name << " is undefined" << std::endl;
@@ -772,12 +772,12 @@ bool object_class::typecheck(Class_ c, ClassTable* classtable, SymbolTable<Symbo
     return true;
 }
 
-bool dispatch_class::typecheck(Class_ c, ClassTable* classtable, SymbolTable<Symbol, Entry>* attr_tbl, SymbolTable<Symbol, method_class>* method_tbl) {
-    bool expr_success = expr->typecheck(c, classtable, attr_tbl, method_tbl);
+bool dispatch_class::typecheck(Class_ c, ClassTable* classtable, SymbolTable<Symbol, Entry>* attr_tbl) {
+    bool expr_success = expr->typecheck(c, classtable, attr_tbl);
     if (!expr_success) { return false; }
     std::vector<Symbol> param_types;
     for(int i = actual->first(); actual->more(i); i = actual->next(i)) {
-        if (!actual->nth(i)->typecheck(c, classtable, attr_tbl, method_tbl)) {
+        if (!actual->nth(i)->typecheck(c, classtable, attr_tbl)) {
             return false;
         }
         param_types.push_back(actual->nth(i)->get_type());
